@@ -67,11 +67,14 @@ const char *next() {
   static size_t n;
   const char *token = 0;
   do {
-    if (!line)
+    if (!line) {
       if (0 > getline(&line, &n, stdin))
 	exit(0);
-
-    if (!(token = strtok(line, "\n\t\v "))) {
+      token = strtok(line, "\n\t\v ");
+    } else {
+      token = strtok(0, "\n\t\v ");
+    }
+    if (!token) {
       free(line);
       line = 0;
     }
@@ -82,18 +85,17 @@ const char *next() {
 void interpret(union cell *sp[])
 {
   struct dict *entry = &greater_than_entry;
-  const char *token;
-  while ((token = next())) {
-    while (entry && strcmp(entry->name, token))
-      entry = entry->next;
-    if (entry) {
-      entry->code(sp);
-    } else if ((token[0] >= '0' && token[0] <= '9') || token[0] == '-') {
-      (**sp).i = atoll(token);
-      (*sp)++;
-    } else {
-      fprintf(stderr, "unknown word\n");
-    }
+  const char *token = next();
+  while (entry && strcmp(entry->name, token)) {
+    entry = entry->next;
+  }
+  if (entry) {
+    entry->code(sp);
+  } else if ((token[0] >= '0' && token[0] <= '9') || token[0] == '-') {
+    (**sp).i = atoll(token);
+    (*sp)++;
+  } else {
+    fprintf(stderr, "unknown word\n");
   }
 }
 
