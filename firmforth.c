@@ -132,16 +132,15 @@ struct dict colon_entry =
 
 static void create_return(void)
 {
-	ir_node   *mem         = get_store();
-	ir_node   *return_node = new_Return(mem, 0, 0);
+  ir_node   *mem         = get_store();
+  ir_node   *return_node = new_Return(mem, 0, 0);
 
-	ir_node *end_block   = get_irg_end_block(current_ir_graph);
-	add_immBlock_pred(end_block, return_node);
+  ir_node *end_block   = get_irg_end_block(current_ir_graph);
+  add_immBlock_pred(end_block, return_node);
 
-	mature_immBlock(get_cur_block());
-	set_cur_block(NULL);
+  mature_immBlock(get_cur_block());
+  set_cur_block(NULL);
 }
-
 
 void semicolon(union cell *sp[])
 {
@@ -216,13 +215,44 @@ struct dict semicolon_entry =
   .ldname = "semicolon"
 };
 
-struct dict *dictionary = &semicolon_entry;
+void key(union cell *sp[])
+{
+  (**sp).i = getchar();
+  (*sp)++;
+}
+
+struct dict key_entry =
+{
+  .name = "key",
+  .code = key,
+  .next = &semicolon_entry,
+  .immediate = 0,
+  .ldname = "key"
+};
+
+void emit(union cell *sp[])
+{
+  (*sp)--;
+  putchar((**sp).i);
+}
+
+struct dict emit_entry =
+{
+  .name = "emit",
+  .code = emit,
+  .next = &key_entry,
+  .immediate = 0,
+  .ldname = "emit"
+};
+
+struct dict *dictionary = &emit_entry;
 
 static void initialize_firm(void)
 {
   ir_init();
   int res = be_parse_arg("isa=amd64");
   res |= be_parse_arg("pic=elf");
+  be_get_backend_param();
   assert(res != 0);
   word_method_type = new_type_method(1, 0);
 /*   ir_type *type_int = new_type_primitive(mode_Ls); */
