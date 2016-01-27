@@ -1,5 +1,14 @@
 * firmforth
 
-firmforth is a just-in-time-compiling forth-like system based on
-libFirm.
+firmforth is a just-in-time-compiling forth-like system.
 
+It is intended to facilitate experiments with just-in-time compilation
+using libfirm.
+
+** dependencies
+http://libfirm.org
+
+** goals
+- [ ] Interactively compile forth words using only Calls
+- [ ] Add control flow primitives
+- [ ] Keep IR around after compilation and inline everything
