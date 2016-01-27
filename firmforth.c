@@ -9,7 +9,7 @@
 #include "firmforth.h"
 #include "gitrev.h"
 
-#define LINK_COMMAND "gcc -shared a.s"
+#define LINK_COMMAND "gcc -shared -o %s %s"
 
 union cell parameter_stack[1<<20];
 
@@ -76,6 +76,7 @@ static const char *next() {
   const char *token = 0;
   do {
     if (!line) {
+      printf("forth> ");
       if (0 > getline(&line, &n, stdin))
 	exit(0);
       token = strtok(line, "\n\t\v ");
@@ -181,18 +182,27 @@ void semicolon(union cell *sp[])
 
   dump_ir_graph(irg, "optimized");
 
-  FILE *out = fopen("a.s", "w");
+  char filename_s[64];
+  snprintf(filename_s, sizeof(filename_s), "%s.s", dictionary->ldname);
+  char filename_so[64];
+  snprintf(filename_so, sizeof(filename_so), "./%s.so", dictionary->ldname);
+
+  FILE *out = fopen(filename_s, "w");
   if(out == NULL) {
-    perror("couldn't open a.s for writing");
+    perror("couldn't open assembly file for writing");
     exit(-1);
   }
 
   be_main(out, "cup");
   fclose(out);
 
-  system(LINK_COMMAND);
+  char command[128];
+  remove_irp_irg(irg);
+  snprintf(command, sizeof(command), LINK_COMMAND,
+	   filename_so, filename_s);
+  system(command);
 
-  void *dlhandle = dlopen("./a.out", RTLD_NOW);
+  void *dlhandle = dlopen(filename_so, RTLD_NOW|RTLD_GLOBAL);
   const char *err = dlerror();
   if(err)
     puts(err), exit(-1);
