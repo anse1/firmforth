@@ -5,11 +5,11 @@ GOAL = firmforth
 FIRM_CFLAGS ?= `pkg-config --cflags libfirm`
 FIRM_LIBS   ?= `pkg-config --libs libfirm`
 
-CFLAGS += -Wall -W -Werror -O0 -g3 -std=gnu99
+CFLAGS += -Wall -W -O0 -g -std=gnu99
 CFLAGS += -I .
 CFLAGS += $(FIRM_CFLAGS) $(ADDCFLAGS)
 
-LFLAGS = $(FIRM_LIBS)
+LFLAGS = $(FIRM_LIBS) -ldl
 
 SOURCES := firmforth.c
 OBJECTS = $(SOURCES:%.c=build/%.o)

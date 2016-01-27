@@ -8,6 +8,8 @@ union cell {
   uintptr_t u;
   char *s;
   const char *cs;
+  void *a;
+  void **aa;
 };
 
 typedef void (*word)(union cell *param_stack[]);
@@ -20,5 +22,7 @@ struct dict {
   word code;
   struct dict *next;
 };
+
+extern struct dict *dictionary;
 
 #endif
