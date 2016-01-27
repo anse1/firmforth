@@ -9,6 +9,7 @@ using libfirm.
 http://libfirm.org
 
 ** goals
-- [ ] Interactively compile forth words using only Calls
+- [ ] Interactively compile forth words using graphs of Call nodes
 - [ ] Add control flow primitives
-- [ ] Keep IR around after compilation and inline everything
+- [ ] Keep IR of newly defined words around for future inlining
+- [ ] Keep IR of statically defined words around for inlining
