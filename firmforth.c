@@ -27,6 +27,7 @@ void hello(union cell *sp[])
 struct dict hello_entry = {
    .name = "hi",
    .code = hello,
+   .ldname = "hello",
 };
 
 void dot(union cell *sp[])
@@ -35,7 +36,12 @@ void dot(union cell *sp[])
   printf("%ld\n", (**sp).i);
 }
 
-struct dict dot_entry = { .name = ".", .code = dot,  .next = &hello_entry };
+struct dict dot_entry = {
+  .name = ".",
+  .code = dot,
+  .next = &hello_entry,
+  .ldname = "dot"
+};
 
 void add(union cell *sp[])
 {
@@ -43,7 +49,12 @@ void add(union cell *sp[])
   (*sp)[-1].i = (*sp)[0].i + (*sp)[1].i;
 }
 
-struct dict add_entry = {.name = "+", .code = add, .next = &dot_entry };
+struct dict add_entry = {
+  .name = "+",
+  .code = add,
+  .next = &dot_entry,
+  .ldname = "add"
+};
 
 void greater_than(union cell *sp[])
 {
@@ -52,7 +63,12 @@ void greater_than(union cell *sp[])
 }
 
 struct dict greater_than_entry =
-  {.name = ">", .code = greater_than, .next = &add_entry };
+{
+  .name = ">",
+  .code = greater_than,
+  .next = &add_entry,
+  .ldname = "greater_than"
+};
 
 static const char *next() {
   static char *line;
@@ -82,6 +98,7 @@ static ir_graph *create_graph(struct dict *entry)
   ir_graph *irg = new_ir_graph(entity, 0);
 
   set_entity_ld_ident(entity, id);
+  entry->entity = entity;
   return irg;
 }
 
@@ -89,7 +106,7 @@ void colon(union cell *sp[])
 {
   compiling = 1;
   struct dict *entry = malloc(sizeof(struct dict));
-  entry->name = strdup(next());
+  entry->ldname = entry->name = strdup(next());
   entry->smudge = 1;
   entry->code = 0;
   entry->immediate = 0;
@@ -106,7 +123,12 @@ void colon(union cell *sp[])
 }
 
 struct dict colon_entry =
-  {.name = ":", .code = colon, .next = &greater_than_entry };
+{
+  .name = ":",
+  .code = colon,
+  .next = &greater_than_entry,
+  .ldname = "colon"
+};
 
 static void create_return(void)
 {
@@ -172,16 +194,27 @@ void semicolon(union cell *sp[])
   system(LINK_COMMAND);
 
   void *dlhandle = dlopen("./a.out", RTLD_NOW);
-  if(dlerror())
-    puts(dlerror());
-  dictionary->code = dlsym(dlhandle, dictionary->name);
-  if(dlerror())
-    puts(dlerror());
+  const char *err = dlerror();
+  if(err)
+    puts(err), exit(-1);
+
+  dictionary->code = dlsym(dlhandle, dictionary->ldname);
+  err = dlerror();
+  if(err)
+    puts(err), exit(-1);
+
+  set_entity_visibility(dictionary->entity, ir_visibility_external);
   dictionary->smudge = 0;
 }
 
 struct dict semicolon_entry =
-  {.name = ";", .code = semicolon, .next = &colon_entry, .immediate=1 };
+{
+  .name = ";",
+  .code = semicolon,
+  .next = &colon_entry,
+  .immediate = 1,
+  .ldname = "semicolon"
+};
 
 struct dict *dictionary = &semicolon_entry;
 
@@ -199,12 +232,26 @@ static void initialize_firm(void)
   ir_type *type_P = new_type_primitive(mode_P);
 
   set_method_param_type(word_method_type, 0, type_P);
+
+  /* create firm entities for static words */
+  /* needed as long as the code generator can't call a function at an
+     absolute address */
+
+  ir_type *global_type = get_glob_type();
+
+  for (struct dict *entry = dictionary; entry; entry = entry->next) {
+    ident *id = new_id_from_str(entry->ldname);
+    ir_entity *entity = new_entity(global_type, id, word_method_type);
+    set_entity_visibility(entity, ir_visibility_external);
+    entry->entity = entity;
+  }
 }
 
 static void compile(union cell *sp[], struct dict *entry) {
   ir_node *stacknode = (*sp)[-1].a;
   ir_node *mem = get_store();
-  ir_node *ptr = new_Const_long(mode_P, (long)(entry->code));
+/*   ir_node *ptr = new_Const_long(mode_P, (long)(entry->code)); */
+  ir_node *ptr = new_Address(entry->entity);
   ir_node *call = new_Call(mem, ptr, 1, &stacknode, word_method_type);
   ir_node *store_mem = new_Proj(call, mode_M, pn_Call_M);
   set_store(store_mem);

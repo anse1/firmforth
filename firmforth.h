@@ -2,6 +2,7 @@
 #define FIRMFORTH_H
 
 #include <stdint.h>
+#include <libfirm/firm.h>
 
 union cell {
   intptr_t i;
@@ -20,6 +21,8 @@ struct dict {
   int immediate : 1;
   int smudge : 1;
   word code;
+  ir_entity *entity;
+  const char *ldname;
   struct dict *next;
 };
 
