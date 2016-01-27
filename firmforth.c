@@ -134,6 +134,7 @@ void semicolon(union cell *sp[])
   irg_finalize_cons(irg);
   irg_assert_verify(irg);
 
+  dump_ir_graph(irg, "constructed");
 
   /* perform a bunch of optimisations */
   do_loop_inversion(irg);
@@ -157,13 +158,15 @@ void semicolon(union cell *sp[])
   place_code(irg);
   optimize_cf(irg);
 
+  dump_ir_graph(irg, "optimized");
+
   FILE *out = fopen("a.s", "w");
   if(out == NULL) {
     perror("couldn't open a.s for writing");
     exit(-1);
   }
 
-  be_main(out, "isthistheprogramname");
+  be_main(out, "cup");
   fclose(out);
 
   system(LINK_COMMAND);
