@@ -84,7 +84,6 @@ static const char *next() {
   const char *token = 0;
   do {
     if (!line) {
-      printf("forth> ");
     retry:
       if (0 > getline(&line, &n, stdin))
 	exit(0);

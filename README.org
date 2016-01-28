@@ -8,10 +8,10 @@ Firmforth is not a real forth because it lacks the typical inner
 interpreter.  Its dictionary is just a list of functions that can be
 invoked for an effect on a stack of values or a side effect.
 
-It does sport the forth-typical "outer interpreter" though.  In
-interpreter mode, it executes the functions for the words that are
-input.  In compilation mode, its action depends on whether an entered
-word is flagged immediate.  Immediate words - e.g. "if" - are executed
+It does sport a forth-like outer interpreter though.  In interpreter
+mode, it executes the functions for the words that are input.  In
+compilation mode, its action depends on whether an entered word is
+flagged immediate.  Immediate words - e.g. "if" - are still executed
 right-away and implement the compiler itself.  Non-immediate words end
 up as Call nodes in the intermediate language.
 
@@ -21,6 +21,14 @@ kept around for inlining future Calls during the optimization phase.
 
 ** dependencies
 http://libfirm.org
+
+** usage
+
+A couple of standard forth words are written in forth itself in the
+file =core.fifo=.  To get them defined in an interactive session, you
+could invoke firmforth like this:
+
+: make && cat core.fifo - | ./firmforth
 
 ** goals
 - [X] Interactively compile forth words using graphs of Call nodes
