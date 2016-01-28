@@ -5,6 +5,7 @@
 #include <dlfcn.h>
 
 #include <libfirm/firm.h>
+#include <libfirm/ident.h>
 
 #include "firmforth.h"
 #include "gitrev.h"
@@ -46,8 +47,8 @@ struct dict dot_entry = {
 
 void add(union cell *sp[])
 {
-  (*sp) -= 2;
-  (*sp)[-1].i = (*sp)[0].i + (*sp)[1].i;
+  (*sp)--;
+  (*sp)[-1].i = (*sp)[-1].i + (*sp)[0].i;
 }
 
 struct dict add_entry = {
@@ -78,8 +79,11 @@ static const char *next() {
   do {
     if (!line) {
       printf("forth> ");
+    retry:
       if (0 > getline(&line, &n, stdin))
 	exit(0);
+      if (*line == '#' || *line == '\\')
+	goto retry;
       token = strtok(line, "\n\t\v ");
     } else {
       token = strtok(0, "\n\t\v ");
@@ -94,13 +98,16 @@ static const char *next() {
 
 static ir_graph *create_graph(struct dict *entry)
 {
-  ident *id = new_id_from_str(entry->name);
+  ident *id = id_unique("word_%03x");
   ir_type   *global_type = get_glob_type();
   ir_entity *entity      = new_entity(global_type, id, word_method_type);
-  ir_graph *irg = new_ir_graph(entity, 0);
 
   set_entity_ld_ident(entity, id);
+
+  ir_graph *irg = new_ir_graph(entity, 0);
+
   entry->entity = entity;
+  entry->ldname = get_id_str(id);
   return irg;
 }
 
@@ -108,7 +115,7 @@ void colon(union cell *sp[])
 {
   compiling = 1;
   struct dict *entry = malloc(sizeof(struct dict));
-  entry->ldname = entry->name = strdup(next());
+  entry->name = strdup(next());
   entry->smudge = 1;
   entry->code = 0;
   entry->immediate = 0;
@@ -341,7 +348,20 @@ struct dict negate_entry =
   .ldname = "negate"
 };
 
-struct dict *dictionary = &negate_entry;
+void load(union cell *sp[])
+{
+  (*sp)[-1].a = *((*sp)[-1].aa);
+}
+
+struct dict load_entry =
+{
+  .name = "@",
+  .code = load,
+  .next = &negate_entry,
+  .ldname = "load"
+};
+
+struct dict *dictionary = &load_entry;
 
 static void initialize_firm(void)
 {
