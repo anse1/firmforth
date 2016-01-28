@@ -1,15 +1,29 @@
 * firmforth
 
-firmforth is a just-in-time-compiling forth-like system.
+firmforth is a just-in-time-compiling forth-like system using libfirm.
 
-It is intended to facilitate experiments with just-in-time compilation
-using libfirm.
+** design
+
+Firmforth is not a real forth because it lacks the typical inner
+interpreter.  Its dictionary is just a list of functions that can be
+invoked for an effect on a stack of values or a side effect.
+
+It does sport the forth-typical "outer interpreter" though.  In
+interpreter mode, it executes the functions for the words that are
+input.  In compilation mode, its action depends on whether an entered
+word is flagged immediate.  Immediate words - e.g. "if" - are executed
+right-away and implement the compiler itself.  Non-immediate words end
+up as Call nodes in the intermediate language.
+
+When the definition is complete, the IR is optimized and compiled into
+a shared object and added to the word list using dlopen().  The IR is
+kept around for inlining future Calls during the optimization phase.
 
 ** dependencies
 http://libfirm.org
 
 ** goals
 - [X] Interactively compile forth words using graphs of Call nodes
-- [ ] Add control flow primitives
+- [X] Add control flow primitives
 - [ ] Keep IR of newly defined words around for future inlining
 - [ ] Keep IR of statically defined words around for inlining

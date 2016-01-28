@@ -14,9 +14,11 @@
 #define DUMP_COMMAND "cat %s"
 
 union cell parameter_stack[1<<20];
+ir_type *type_cell;
 
 union cell *sp = parameter_stack;
 ir_entity *sp_entity;
+ir_type *type_cell_ptr;
 
 int compiling = 0;
 ir_type *word_method_type = 0;
@@ -147,7 +149,7 @@ static void create_return(void)
   set_cur_block(NULL);
 }
 
-void semicolon()
+void semicolon(void)
 {
   sp--;
   compiling = 0;
@@ -370,7 +372,91 @@ struct dict store_entry =
   .ldname = "store"
 };
 
-struct dict *dictionary = &store_entry;
+/* ( -- bb_else ) */
+void w_if()
+{
+  ir_node *ir_sp = new_Address(sp_entity);
+  ir_node *load_ptr = new_Load(get_store(), ir_sp, mode_P, type_cell_ptr, 0);
+  ir_node *load_ptr_res = new_Proj(load_ptr, mode_P, pn_Load_res);
+  ir_node *offset = new_Const_long(mode_Ls, -8);
+  ir_node *add = new_Add(load_ptr_res, offset, mode_P);
+
+  ir_node *load_data = new_Load(get_store(), add, mode_Lu, type_cell, 0);
+  ir_node *load_data_res = new_Proj(load_data, mode_Lu, pn_Load_res);
+
+  ir_node *cmp = new_Cmp(load_data_res,
+			 new_Const_long(mode_Lu, 0),
+			 ir_relation_less_greater);
+  ir_node *cond = new_Cond(cmp);
+
+  ir_node *proj_true  = new_Proj(cond, mode_X, pn_Cond_true);
+  ir_node *block_true = new_immBlock();
+  add_immBlock_pred(block_true, proj_true);
+
+  ir_node *proj_false = new_Proj(cond, mode_X, pn_Cond_false);
+  ir_node *block_false = new_immBlock();
+  add_immBlock_pred(block_false, proj_false);
+
+  mature_immBlock(get_cur_block());
+
+  set_cur_block(block_true);
+  sp->a = block_false;
+  sp++;
+}
+
+struct dict if_entry =
+{
+  .name = "if",
+  .immediate = 1,
+  .code = w_if,
+  .next = &store_entry,
+  .ldname = "if"
+};
+
+/* ( bb_else -- bb_then ) */
+void w_else()
+{
+  ir_node *bb_else = sp[-1].a;
+
+  ir_node *jump = new_Jmp();
+  ir_node *bb_then = new_immBlock();
+  add_immBlock_pred(bb_then, jump);
+  mature_immBlock(get_cur_block());
+  set_cur_block(bb_else);
+
+  sp[-1].a = bb_then;
+}
+
+struct dict else_entry =
+{
+  .name = "else",
+  .immediate = 1,
+  .code = w_else,
+  .next = &if_entry,
+  .ldname = "else"
+};
+
+/* ( bb_then -- ) */
+void w_then()
+{
+  sp--;
+  ir_node *bb_then = sp->a;
+  ir_node *jump = new_Jmp();
+  add_immBlock_pred(bb_then, jump);
+  mature_immBlock(get_cur_block());
+  set_cur_block(bb_then);
+}
+
+struct dict then_entry =
+{
+  .name = "then",
+  .immediate = 1,
+  .code = w_then,
+  .next = &else_entry,
+  .ldname = "then"
+};
+
+struct dict *dictionary = &then_entry;
 
 static void initialize_firm(void)
 {
@@ -380,15 +466,13 @@ static void initialize_firm(void)
   be_get_backend_param();
   assert(res != 0);
   word_method_type = new_type_method(0, 0);
-/*   ir_type *type_int = new_type_primitive(mode_Ls); */
-/*   ir_type *type_int_p = find_pointer_type_to_type(type_int); */
+  type_cell = new_type_primitive(mode_Ls);
+  type_cell_ptr = find_pointer_type_to_type(type_cell);
 /*   ir_type *type_int_p_p = find_pointer_type_to_type(type_int_p); */
-
-  ir_type *type_P = new_type_primitive(mode_P);
 
   /* create firm entities for globals in our program */
   ir_type *global_type = get_glob_type();
-  sp_entity = new_entity(global_type, new_id_from_str("sp"), type_P);
+  sp_entity = new_entity(global_type, new_id_from_str("sp"), type_cell_ptr);
 
   /* Add entities for functions.  This is needed as long as the code
      generator can't call a function at an absolute address */
