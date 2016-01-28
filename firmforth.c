@@ -21,6 +21,10 @@ ir_entity *sp_entity;
 ir_type *type_cell_ptr;
 
 int compiling = 0;
+
+#define CROAK_UNLESS_COMPILING() \
+  do {if (!compiling) {fprintf(stderr, "ERROR: not in compilation mode\n");return;}} while (0)
+
 ir_type *word_method_type = 0;
 
 void hello()
@@ -151,6 +155,8 @@ static void create_return(void)
 
 void semicolon(void)
 {
+  CROAK_UNLESS_COMPILING();
+
   sp--;
   compiling = 0;
 
@@ -375,6 +381,8 @@ struct dict store_entry =
 /* ( -- bb_else ) */
 void w_if()
 {
+  CROAK_UNLESS_COMPILING();
+
   ir_node *ir_sp = new_Address(sp_entity);
   ir_node *load_ptr = new_Load(get_store(), ir_sp, mode_P, type_cell_ptr, 0);
   ir_node *load_ptr_res = new_Proj(load_ptr, mode_P, pn_Load_res);
@@ -416,6 +424,8 @@ struct dict if_entry =
 /* ( bb_else -- bb_then ) */
 void w_else()
 {
+  CROAK_UNLESS_COMPILING();
+
   ir_node *bb_else = sp[-1].a;
 
   ir_node *jump = new_Jmp();
@@ -439,6 +449,7 @@ struct dict else_entry =
 /* ( bb_then -- ) */
 void w_then()
 {
+  CROAK_UNLESS_COMPILING();
   sp--;
   ir_node *bb_then = sp->a;
   ir_node *jump = new_Jmp();
@@ -468,7 +479,6 @@ static void initialize_firm(void)
   word_method_type = new_type_method(0, 0);
   type_cell = new_type_primitive(mode_Ls);
   type_cell_ptr = find_pointer_type_to_type(type_cell);
-/*   ir_type *type_int_p_p = find_pointer_type_to_type(type_int_p); */
 
   /* create firm entities for globals in our program */
   ir_type *global_type = get_glob_type();
@@ -510,7 +520,7 @@ void interpret(union cell *sp[])
     (**sp).i = atoll(token);
     (*sp)++;
   } else {
-    fprintf(stderr, "unknown word\n");
+    fprintf(stderr, "ERROR: unknown word\n");
   }
 }
 
