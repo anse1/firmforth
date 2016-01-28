@@ -10,6 +10,7 @@
 #include "gitrev.h"
 
 #define LINK_COMMAND "gcc -shared -o %s %s"
+#define DUMP_COMMAND "cat %s"
 
 union cell parameter_stack[1<<20];
 
@@ -195,9 +196,13 @@ void semicolon(union cell *sp[])
 
   be_main(out, "cup");
   fclose(out);
+  remove_irp_irg(irg);
 
   char command[128];
-  remove_irp_irg(irg);
+
+  snprintf(command, sizeof(command), DUMP_COMMAND, filename_s);
+  system(command);
+
   snprintf(command, sizeof(command), LINK_COMMAND,
 	   filename_so, filename_s);
   system(command);
@@ -255,7 +260,88 @@ struct dict emit_entry =
   .ldname = "emit"
 };
 
-struct dict *dictionary = &emit_entry;
+void sp_load(union cell *sp[])
+{
+  (**sp).a = *sp;
+  (*sp)++;
+}
+
+struct dict sp_load_entry =
+{
+  .name = "sp@",
+  .code = sp_load,
+  .next = &emit_entry,
+  .ldname = "sp_load"
+};
+
+void sp_store(union cell *sp[])
+{
+  *sp = (*sp)[-1].a;
+}
+
+struct dict sp_store_entry =
+{
+  .name = "sp!",
+  .code = sp_store,
+  .next = &sp_load_entry,
+  .ldname = "sp_store"
+};
+
+void cells(union cell *sp[])
+{
+  (*sp)[-1].i = sizeof(union cell) * (*sp)[-1].i;
+}
+
+struct dict cells_entry =
+{
+  .name = "cells",
+  .code = cells,
+  .next = &sp_store_entry,
+  .ldname = "cells"
+};
+
+void zero(union cell *sp[])
+{
+  (**sp).i = 0;
+  (*sp)++;
+}
+
+struct dict zero_entry =
+{
+  .name = "0",
+  .code = zero,
+  .next = &cells_entry,
+  .ldname = "zero"
+};
+
+void one(union cell *sp[])
+{
+  (**sp).i = 1;
+  (*sp)++;
+}
+
+struct dict one_entry =
+{
+  .name = "1",
+  .code = one,
+  .next = &zero_entry,
+  .ldname = "one"
+};
+
+void negate(union cell *sp[])
+{
+  (*sp)[-1].i = -(*sp)[-1].i;
+}
+
+struct dict negate_entry =
+{
+  .name = "negate",
+  .code = negate,
+  .next = &one_entry,
+  .ldname = "negate"
+};
+
+struct dict *dictionary = &negate_entry;
 
 static void initialize_firm(void)
 {
