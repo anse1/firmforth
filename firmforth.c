@@ -16,13 +16,13 @@
 union cell parameter_stack[1<<20];
 
 union cell *sp = parameter_stack;
+ir_entity *sp_entity;
 
 int compiling = 0;
 ir_type *word_method_type = 0;
 
-void hello(union cell *sp[])
+void hello()
 {
-  (void) sp;
   puts("firmforth " GITREV);
 }
 
@@ -32,10 +32,10 @@ struct dict hello_entry = {
    .ldname = "hello",
 };
 
-void dot(union cell *sp[])
+void dot()
 {
-  (*sp)--;
-  printf("%ld\n", (**sp).i);
+  sp--;
+  printf("%ld\n", sp->i);
 }
 
 struct dict dot_entry = {
@@ -45,10 +45,10 @@ struct dict dot_entry = {
   .ldname = "dot"
 };
 
-void add(union cell *sp[])
+void add()
 {
-  (*sp)--;
-  (*sp)[-1].i = (*sp)[-1].i + (*sp)[0].i;
+  sp--;
+  sp[-1].i = sp[-1].i + sp[0].i;
 }
 
 struct dict add_entry = {
@@ -58,10 +58,10 @@ struct dict add_entry = {
   .ldname = "add"
 };
 
-void greater_than(union cell *sp[])
+void greater_than()
 {
-  (*sp) -= 2;
-  (*sp)[-1].i = (*sp)[0].i > (*sp)[1].i ? 1 : 0;
+  sp -= 2;
+  sp[-1].i = sp[0].i > sp[1].i ? 1 : 0;
 }
 
 struct dict greater_than_entry =
@@ -111,7 +111,7 @@ static ir_graph *create_graph(struct dict *entry)
   return irg;
 }
 
-void colon(union cell *sp[])
+void colon()
 {
   compiling = 1;
   struct dict *entry = malloc(sizeof(struct dict));
@@ -125,10 +125,6 @@ void colon(union cell *sp[])
 
   ir_graph *irg = create_graph(entry);
   set_current_ir_graph(irg);
-  ir_node *args = new_Proj(get_irg_start(irg), mode_T, pn_Start_T_args);
-  ir_node *stacknode = new_Proj(args, mode_P, 0);
-  (**sp).a = stacknode;
-  (*sp)++;
 }
 
 struct dict colon_entry =
@@ -151,11 +147,9 @@ static void create_return(void)
   set_cur_block(NULL);
 }
 
-void semicolon(union cell *sp[])
+void semicolon()
 {
-  ir_node *stacknode = (ir_node *)(*sp)[-1].aa;
-  (void) stacknode;
-  (*sp)--;
+  sp--;
   compiling = 0;
 
   ir_graph *irg = get_current_ir_graph();
@@ -237,10 +231,10 @@ struct dict semicolon_entry =
   .ldname = "semicolon"
 };
 
-void key(union cell *sp[])
+void key()
 {
-  (**sp).i = getchar();
-  (*sp)++;
+  sp->i = getchar();
+  sp++;
 }
 
 struct dict key_entry =
@@ -252,10 +246,10 @@ struct dict key_entry =
   .ldname = "key"
 };
 
-void emit(union cell *sp[])
+void emit()
 {
-  (*sp)--;
-  putchar((**sp).i);
+  sp--;
+  putchar(sp->i);
 }
 
 struct dict emit_entry =
@@ -267,10 +261,10 @@ struct dict emit_entry =
   .ldname = "emit"
 };
 
-void sp_load(union cell *sp[])
+void sp_load()
 {
-  (**sp).a = *sp;
-  (*sp)++;
+  sp->a = sp;
+  sp++;
 }
 
 struct dict sp_load_entry =
@@ -281,9 +275,9 @@ struct dict sp_load_entry =
   .ldname = "sp_load"
 };
 
-void sp_store(union cell *sp[])
+void sp_store()
 {
-  *sp = (*sp)[-1].a;
+  sp = sp[-1].a;
 }
 
 struct dict sp_store_entry =
@@ -294,9 +288,9 @@ struct dict sp_store_entry =
   .ldname = "sp_store"
 };
 
-void cells(union cell *sp[])
+void cells()
 {
-  (*sp)[-1].i = sizeof(union cell) * (*sp)[-1].i;
+  sp[-1].i = sizeof(union cell) * sp[-1].i;
 }
 
 struct dict cells_entry =
@@ -307,10 +301,10 @@ struct dict cells_entry =
   .ldname = "cells"
 };
 
-void zero(union cell *sp[])
+void zero()
 {
-  (**sp).i = 0;
-  (*sp)++;
+  sp->i = 0;
+  sp++;
 }
 
 struct dict zero_entry =
@@ -321,10 +315,10 @@ struct dict zero_entry =
   .ldname = "zero"
 };
 
-void one(union cell *sp[])
+void one()
 {
-  (**sp).i = 1;
-  (*sp)++;
+  sp->i = 1;
+  sp++;
 }
 
 struct dict one_entry =
@@ -335,9 +329,9 @@ struct dict one_entry =
   .ldname = "one"
 };
 
-void negate(union cell *sp[])
+void negate()
 {
-  (*sp)[-1].i = -(*sp)[-1].i;
+  sp[-1].i = -sp[-1].i;
 }
 
 struct dict negate_entry =
@@ -348,9 +342,9 @@ struct dict negate_entry =
   .ldname = "negate"
 };
 
-void load(union cell *sp[])
+void load()
 {
-  (*sp)[-1].a = *((*sp)[-1].aa);
+  sp[-1].a = *(sp[-1].aa);
 }
 
 struct dict load_entry =
@@ -362,10 +356,10 @@ struct dict load_entry =
 };
 
 /* ( x a-addr -- ) */
-void store(union cell *sp[])
+void store()
 {
-  *((*sp)[-1].aa) = (*sp)[-2].a;
-  (*sp) -= 2;
+  *(sp[-1].aa) = sp[-2].a;
+  sp -= 2;
 }
 
 struct dict store_entry =
@@ -385,21 +379,19 @@ static void initialize_firm(void)
   res |= be_parse_arg("pic=elf");
   be_get_backend_param();
   assert(res != 0);
-  word_method_type = new_type_method(1, 0);
+  word_method_type = new_type_method(0, 0);
 /*   ir_type *type_int = new_type_primitive(mode_Ls); */
 /*   ir_type *type_int_p = find_pointer_type_to_type(type_int); */
 /*   ir_type *type_int_p_p = find_pointer_type_to_type(type_int_p); */
 
   ir_type *type_P = new_type_primitive(mode_P);
 
-  set_method_param_type(word_method_type, 0, type_P);
-
-  /* create firm entities for static words */
-  /* needed as long as the code generator can't call a function at an
-     absolute address */
-
+  /* create firm entities for globals in our program */
   ir_type *global_type = get_glob_type();
+  sp_entity = new_entity(global_type, new_id_from_str("sp"), type_P);
 
+  /* Add entities for functions.  This is needed as long as the code
+     generator can't call a function at an absolute address */
   for (struct dict *entry = dictionary; entry; entry = entry->next) {
     ident *id = new_id_from_str(entry->ldname);
     ir_entity *entity = new_entity(global_type, id, word_method_type);
@@ -408,12 +400,11 @@ static void initialize_firm(void)
   }
 }
 
-static void compile(union cell *sp[], struct dict *entry) {
-  ir_node *stacknode = (*sp)[-1].a;
+static void compile(struct dict *entry) {
   ir_node *mem = get_store();
 /*   ir_node *ptr = new_Const_long(mode_P, (long)(entry->code)); */
   ir_node *ptr = new_Address(entry->entity);
-  ir_node *call = new_Call(mem, ptr, 1, &stacknode, word_method_type);
+  ir_node *call = new_Call(mem, ptr, 0, 0, word_method_type);
   ir_node *store_mem = new_Proj(call, mode_M, pn_Call_M);
   set_store(store_mem);
   (void) call;
@@ -428,9 +419,9 @@ void interpret(union cell *sp[])
   }
   if (entry) {
     if (compiling && !entry->immediate)
-      compile(sp, entry);
+      compile(entry);
     else
-      entry->code(sp);
+      entry->code();
   } else if ((token[0] >= '0' && token[0] <= '9') || token[0] == '-') {
     (**sp).i = atoll(token);
     (*sp)++;

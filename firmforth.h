@@ -13,7 +13,7 @@ union cell {
   void **aa;
 };
 
-typedef void (*word)(union cell *param_stack[]);
+typedef void (*word)();
 
 struct dict {
   const char *name;
