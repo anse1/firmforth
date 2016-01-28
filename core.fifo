@@ -1,17 +1,68 @@
-\ Define some words from the CORE section of the ANS94 standard
+( -*- forth -*- )
+( Use firmforth primitives to define more words from )
+( the CORE section of the ANS94 standard. )
 
 : 1+ 1 + ;
 
 : 2 1 1+ ;
 : 3 2 1+ ;
+: 4 3 1+ ;
+: 5 4 1+ ;
 
 : -1 1 negate ;
 : -2 2 negate ;
 : -3 3 negate ;
 
-: - negate + ;
+: invert 1+ negate ;
 
-: drop sp@ 1 cells - sp! ;
-: 2drop drop drop ;
-: dup sp@ -1 cells + @ ;
+: - negate + ;
+: 1- -1 + ;
+
+: < ( x1 x2 -- flag )
+	1- > negate ;
+
+: drop ( a -- )
+  sp@ 1 cells - sp! ;
+
+: 2drop ( a b -- )
+  drop drop ;
+
+: dup ( a -- a a )
+  sp@ -1 cells + @ ;
+
+: swap ( a b -- b a )
+  dup
+  sp@ 3 cells - @
+  sp@ 3 cells - !
+  sp@ 3 cells - ! ;
+  
+: pick ( xu ... x1 x0 u -- xu ... x1 x0 xu )
+  2 + cells sp@ swap - @ ;
+
+: 2dup ( x1 x2 -- x1 x2 x1 x2 )
+  1 pick 1 pick ;
+
+: 0= ( x1 -- flag )
+	if 0 else 1 then ;
+
+: = ( x1 x2 -- flag )
+	2dup > if
+		0
+	else
+		1- > if
+			1
+		else
+			0
+		then
+	then ;
+
+: fibonacci
+	dup 0= if
+	else
+		dup 1 = if
+		else
+			1 - dup fibonacci
+			swap 1 - fibonacci +
+		then
+	then ;
 

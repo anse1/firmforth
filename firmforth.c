@@ -12,7 +12,7 @@
 
 #define LINK_COMMAND "gcc -shared -o %s %s"
 
-union cell parameter_stack[1<<20];
+union cell parameter_stack[1<<10];
 ir_type *type_cell;
 
 union cell *sp = parameter_stack;
@@ -20,6 +20,11 @@ ir_entity *sp_entity;
 ir_type *type_cell_ptr;
 
 int compiling = 0;
+
+#define ASSERT_STACK() \
+  do { assert(sp >= parameter_stack); \
+    assert(sp < (parameter_stack + sizeof(parameter_stack)));	\
+  } while (0)
 
 #define CROAK_UNLESS_COMPILING() \
   do {if (!compiling) {fprintf(stderr, "ERROR: not in compilation mode\n");return;}} while (0)
@@ -65,8 +70,8 @@ struct dict add_entry = {
 
 void greater_than()
 {
-  sp -= 2;
-  sp[-1].i = sp[0].i > sp[1].i ? 1 : 0;
+  sp -= 1;
+  sp[-1].i = sp[-1].i > sp[0].i ? 1 : 0;
 }
 
 struct dict greater_than_entry =
@@ -154,8 +159,8 @@ static void create_return(void)
 void semicolon(void)
 {
   CROAK_UNLESS_COMPILING();
+  ASSERT_STACK();
 
-  sp--;
   compiling = 0;
 
   ir_graph *irg = get_current_ir_graph();
@@ -170,6 +175,9 @@ void semicolon(void)
   do_loop_inversion(irg);
   optimize_reassociation(irg);
   optimize_load_store(irg);
+
+  optimize_cf(irg);
+
   optimize_graph_df(irg);
   combo(irg);
   scalar_replacement_opt(irg);
@@ -381,11 +389,20 @@ void w_if()
   ir_node *ir_sp = new_Address(sp_entity);
   ir_node *load_ptr = new_Load(get_store(), ir_sp, mode_P, type_cell_ptr, 0);
   ir_node *load_ptr_res = new_Proj(load_ptr, mode_P, pn_Load_res);
-  ir_node *offset = new_Const_long(mode_Ls, -8);
+  ir_node *load_ptr_mem = new_Proj(load_ptr, mode_M, pn_Load_M);
+  set_store(load_ptr_mem);
+
+  ir_node *offset = new_Const_long(mode_Ls, -sizeof(union cell));
   ir_node *add = new_Add(load_ptr_res, offset, mode_P);
 
   ir_node *load_data = new_Load(get_store(), add, mode_Lu, type_cell, 0);
   ir_node *load_data_res = new_Proj(load_data, mode_Lu, pn_Load_res);
+  ir_node *load_data_mem = new_Proj(load_data, mode_M, pn_Load_M);
+  set_store(load_data_mem);
+
+  ir_node *store_ptr = new_Store(get_store(), ir_sp, add, type_cell_ptr, 0);
+  ir_node *store_ptr_mem = new_Proj(store_ptr, mode_M, pn_Store_M);
+  set_store(store_ptr_mem);
 
   ir_node *cmp = new_Cmp(load_data_res,
 			 new_Const_long(mode_Lu, 0),
@@ -496,24 +513,34 @@ static void compile(struct dict *entry) {
   ir_node *call = new_Call(mem, ptr, 0, 0, word_method_type);
   ir_node *store_mem = new_Proj(call, mode_M, pn_Call_M);
   set_store(store_mem);
-  (void) call;
 }
 
-void interpret(union cell *sp[])
+void interpret()
 {
   struct dict *entry = dictionary;
-  const char *token = next();
+  const char *token;
+ retry:
+  token = next();
+
+  if (!strcmp(token, "(")) {
+    do {
+      token = next();
+    } while (strcmp(token, ")"));
+    goto retry;
+  }
   while (entry && strcmp(entry->name, token)) {
     entry = entry->next;
   }
   if (entry) {
+    ASSERT_STACK();
     if (compiling && !entry->immediate)
       compile(entry);
     else
       entry->code();
+    ASSERT_STACK();
   } else if ((token[0] >= '0' && token[0] <= '9') || token[0] == '-') {
-    (**sp).i = atoll(token);
-    (*sp)++;
+    sp->i = atoll(token);
+    sp++;
   } else {
     fprintf(stderr, "ERROR: unknown word\n");
   }
@@ -523,5 +550,5 @@ int main()
 {
   initialize_firm();
   while(1)
-    interpret(&sp);
+    interpret();
 }
