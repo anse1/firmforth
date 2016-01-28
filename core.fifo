@@ -1,0 +1,17 @@
+\ Define some words from the CORE section of the ANS94 standard
+
+: 1+ 1 + ;
+
+: 2 1 1+ ;
+: 3 2 1+ ;
+
+: -1 1 negate ;
+: -2 2 negate ;
+: -3 3 negate ;
+
+: - negate + ;
+
+: drop sp@ 1 cells - sp! ;
+: 2drop drop drop ;
+: dup sp@ -1 cells + @ ;
+
