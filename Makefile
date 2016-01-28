@@ -46,3 +46,4 @@ build/%.o: %.c
 clean:
 	@echo '===> CLEAN'
 	$(Q)rm -rf build $(GOAL) .depend
+	$(Q)rm -rf jit-word_*.so word_*.vcg jit-word_*.s

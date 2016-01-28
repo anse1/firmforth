@@ -11,7 +11,6 @@
 #include "gitrev.h"
 
 #define LINK_COMMAND "gcc -shared -o %s %s"
-#define DUMP_COMMAND "cat %s"
 
 union cell parameter_stack[1<<20];
 ir_type *type_cell;
@@ -207,9 +206,6 @@ void semicolon(void)
   remove_irp_irg(irg);
 
   char command[128];
-
-  snprintf(command, sizeof(command), DUMP_COMMAND, filename_s);
-  system(command);
 
   snprintf(command, sizeof(command), LINK_COMMAND,
 	   filename_so, filename_s);
