@@ -361,7 +361,22 @@ struct dict load_entry =
   .ldname = "load"
 };
 
-struct dict *dictionary = &load_entry;
+/* ( x a-addr -- ) */
+void store(union cell *sp[])
+{
+  *((*sp)[-1].aa) = (*sp)[-2].a;
+  (*sp) -= 2;
+}
+
+struct dict store_entry =
+{
+  .name = "!",
+  .code = store,
+  .next = &load_entry,
+  .ldname = "store"
+};
+
+struct dict *dictionary = &store_entry;
 
 static void initialize_firm(void)
 {
