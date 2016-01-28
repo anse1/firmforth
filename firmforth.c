@@ -183,9 +183,9 @@ void semicolon(union cell *sp[])
   dump_ir_graph(irg, "optimized");
 
   char filename_s[64];
-  snprintf(filename_s, sizeof(filename_s), "%s.s", dictionary->ldname);
+  snprintf(filename_s, sizeof(filename_s), "jit-%s.s", dictionary->ldname);
   char filename_so[64];
-  snprintf(filename_so, sizeof(filename_so), "./%s.so", dictionary->ldname);
+  snprintf(filename_so, sizeof(filename_so), "./jit-%s.so", dictionary->ldname);
 
   FILE *out = fopen(filename_s, "w");
   if(out == NULL) {
