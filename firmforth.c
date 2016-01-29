@@ -253,8 +253,6 @@ struct dict key_entry =
   .name = "key",
   .code = key,
   .next = &semicolon_entry,
-  .immediate = 0,
-  .ldname = "key"
 };
 
 void emit()
@@ -268,8 +266,6 @@ struct dict emit_entry =
   .name = "emit",
   .code = emit,
   .next = &key_entry,
-  .immediate = 0,
-  .ldname = "emit"
 };
 
 void sp_load()
@@ -309,7 +305,6 @@ struct dict cells_entry =
   .name = "cells",
   .code = cells,
   .next = &sp_store_entry,
-  .ldname = "cells"
 };
 
 void zero()
@@ -350,7 +345,6 @@ struct dict negate_entry =
   .name = "negate",
   .code = negate,
   .next = &one_entry,
-  .ldname = "negate"
 };
 
 void load()
@@ -430,7 +424,6 @@ struct dict if_entry =
   .immediate = 1,
   .code = w_if,
   .next = &store_entry,
-  .ldname = "if"
 };
 
 /* ( bb_else -- bb_then ) */
@@ -455,7 +448,6 @@ struct dict else_entry =
   .immediate = 1,
   .code = w_else,
   .next = &if_entry,
-  .ldname = "else"
 };
 
 /* ( bb_then -- ) */
@@ -476,7 +468,6 @@ struct dict then_entry =
   .immediate = 1,
   .code = w_then,
   .next = &else_entry,
-  .ldname = "then"
 };
 
 struct dict *dictionary = &then_entry;
@@ -499,7 +490,7 @@ static void initialize_firm(void)
   /* Add entities for functions.  This is needed as long as the code
      generator can't call a function at an absolute address */
   for (struct dict *entry = dictionary; entry; entry = entry->next) {
-    ident *id = new_id_from_str(entry->ldname);
+    ident *id = new_id_from_str(entry->ldname ? entry->ldname : entry->name);
     ir_entity *entity = new_entity(global_type, id, word_method_type);
     set_entity_visibility(entity, ir_visibility_external);
     entry->entity = entity;
@@ -539,8 +530,12 @@ void interpret()
       entry->code();
     ASSERT_STACK();
   } else if ((token[0] >= '0' && token[0] <= '9') || token[0] == '-') {
-    sp->i = atoll(token);
-    sp++;
+    if (compiling) {
+      fprintf(stderr, "ERROR: NIY\n");
+    } else {
+      sp->i = atoll(token);
+      sp++;
+    }
   } else {
     fprintf(stderr, "ERROR: unknown word\n");
   }
