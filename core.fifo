@@ -45,6 +45,16 @@
 : 0= ( x1 -- flag )
 	if 0 else 1 then ;
 
+: *' ( n1 n2 n3 -- n1 0 n2*n3 )
+	1 pick if
+		2 pick +
+		swap 1-
+		swap *'
+	then ;
+
+: * ( n1 n2 -- n1*n2 )
+	0 *' swap drop swap drop ;
+
 : = ( x1 x2 -- flag )
 	2dup > if
 		0
