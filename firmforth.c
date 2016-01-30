@@ -29,7 +29,7 @@ ir_type *type_cell_ptr;
 
 /* The interpreter splits the input into tokens and searches the
    dictionary for a forth word of that name.  Depending on the
-   following mode variable, it either executes the forth right-away or
+   following mode variable, it either executes the word right-away or
    adds the execution of the word to the intermediate language of a
    new word being defined. */
 int compiling = 0;
