@@ -41,14 +41,17 @@
 : pick ( xu ... x1 x0 u -- xu ... x1 x0 xu )
   2 + cells sp@ swap - @ ;
 
+: over ( x1 x2 -- x1 x2 x1 )
+	1 pick ;
+
 : 2dup ( x1 x2 -- x1 x2 x1 x2 )
-  1 pick 1 pick ;
+  over over ;
 
 : 0= ( x1 -- flag )
 	if 0 else 1 then ;
 
 : *' ( n1 n2 n3 -- n1 0 n2*n3 )
-	1 pick if
+	over if
 		2 pick +
 		swap 1-
 		swap *'
