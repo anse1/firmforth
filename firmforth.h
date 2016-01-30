@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <libfirm/firm.h>
 
+/* Type of elements on the forth data stack */
 union cell {
   intptr_t i;
   uintptr_t u;
@@ -13,16 +14,16 @@ union cell {
   void **aa;
 };
 
+/* Type of functions implementing forth words */
 typedef void (*word)();
 
 struct dict {
-  const char *name;
-  int compile_only : 1;
-  int immediate : 1;
-  int smudge : 1;
-  word code;
-  ir_entity *entity;
-  const char *ldname;
+  const char *name; /* Forth word */
+  int immediate : 1; /* execute even when compiling */
+  int smudge : 1; /* word is under construction */
+  word code; /* pointer to function implementing the word */
+  ir_entity *entity; /* Firm entity for function */
+  const char *ldname; /* Optionally override .name as linker symbol */
   struct dict *next;
 };
 
