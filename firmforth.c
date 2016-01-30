@@ -536,7 +536,7 @@ static void initialize_firm(void)
   }
 }
 
-/* Add IR to the program that executes the forth word described by
+/* Add IR to the program to execute the forth word described by
    ENTRY. */
 static void compile(struct dict *entry) {
   ir_node *mem = get_store();
