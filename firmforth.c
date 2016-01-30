@@ -10,38 +10,55 @@
 #include "firmforth.h"
 #include "gitrev.h"
 
+/* Format string to generate a shared object file (first parameter)
+   for dlopen() from assembly file (second parameter). */
 #define LINK_COMMAND "gcc -shared -o %s %s"
 
-union cell parameter_stack[1<<10];
+/* Forth data stack */
+union cell data_stack[1<<10];
+
+/* Firm type for elements of the data stack */
 ir_type *type_cell;
 
-union cell *sp = parameter_stack;
+/* Forth stack pointer */
+union cell *sp = data_stack;
+
+/* Firm entity and type for stack pointer */
 ir_entity *sp_entity;
 ir_type *type_cell_ptr;
 
+/* The interpreter splits the input into tokens and searches the
+   dictionary for a forth word of that name.  Depending on the
+   following mode variable, it either executes the forth right-away or
+   adds the execution of the word to the intermediate language of a
+   new word being defined. */
 int compiling = 0;
 
 #define ASSERT_STACK() \
-  do { assert(sp >= parameter_stack); \
-    assert(sp < (parameter_stack + sizeof(parameter_stack)));	\
+  do { assert(sp >= data_stack); \
+    assert(sp < (data_stack + sizeof(data_stack)));	\
   } while (0)
 
 #define CROAK_UNLESS_COMPILING() \
   do {if (!compiling) {fprintf(stderr, "ERROR: not in compilation mode\n");return;}} while (0)
 
+/* Firm type of methods implementing forth words */
 ir_type *word_method_type = 0;
 
-void hello()
+/* The first forth word method */
+void hi()
 {
   puts("firmforth " GITREV);
 }
 
-struct dict hello_entry = {
+/* Forth dictionary entry for "hi" */
+struct dict hi_entry = {
    .name = "hi",
-   .code = hello,
-   .ldname = "hello",
+   .code = hi,
 };
 
+/* Definitions of standard forth words have no comments on them.  See
+   ANSI X3.215-1994 for their definition. */
 void dot()
 {
   sp--;
@@ -51,7 +68,7 @@ void dot()
 struct dict dot_entry = {
   .name = ".",
   .code = dot,
-  .next = &hello_entry,
+  .next = &hi_entry,
   .ldname = "dot"
 };
 
@@ -82,6 +99,8 @@ struct dict greater_than_entry =
   .ldname = "greater_than"
 };
 
+/* Fetch a whitespace-delimited string from stdin, skipping # and
+   \-comments */
 static const char *next() {
   static char *line;
   static size_t n;
@@ -91,49 +110,47 @@ static const char *next() {
     retry:
       if (0 > getline(&line, &n, stdin))
 	exit(0);
-      if (*line == '#' || *line == '\\')
+      if (*line == '#') {
+	free(line);
 	goto retry;
+      }
       token = strtok(line, "\n\t\v ");
     } else {
       token = strtok(0, "\n\t\v ");
     }
-    if (!token) {
+    if (!token || *token == '\\') {
       free(line);
-      line = 0;
+      token = line = 0;
     }
   } while (!token);
   return token;
 }
 
-static ir_graph *create_graph(struct dict *entry)
-{
-  ident *id = id_unique("word_%03x");
-  ir_type   *global_type = get_glob_type();
-  ir_entity *entity      = new_entity(global_type, id, word_method_type);
-
-  set_entity_ld_ident(entity, id);
-
-  ir_graph *irg = new_ir_graph(entity, 0);
-
-  entry->entity = entity;
-  entry->ldname = get_id_str(id);
-  return irg;
-}
-
+/* Start compilation of a new word */
 void colon()
 {
-  compiling = 1;
+  compiling = 1; /* switch interpreter mode */
+
+  /* create dictionary entry */
   struct dict *entry = malloc(sizeof(struct dict));
   entry->name = strdup(next());
   entry->smudge = 1;
   entry->code = 0;
   entry->immediate = 0;
   entry->next = dictionary;
-
   dictionary = entry;
 
-  ir_graph *irg = create_graph(entry);
+  /* Create Firm entity for word */
+  ident *id = id_unique("word_%03x");
+  ir_type   *global_type = get_glob_type();
+  entry->entity = new_entity(global_type, id, word_method_type);
+  set_entity_ld_ident(entry->entity, id);
+
+  /* Create IR graph */
+  ir_graph *irg = new_ir_graph(entry->entity, 0);
   set_current_ir_graph(irg);
+
+  entry->ldname = get_id_str(id);
 }
 
 struct dict colon_entry =
@@ -156,6 +173,7 @@ static void create_return(void)
   set_cur_block(NULL);
 }
 
+/* End compilation of a word */
 void semicolon(void)
 {
   CROAK_UNLESS_COMPILING();
@@ -198,37 +216,41 @@ void semicolon(void)
 
   dump_ir_graph(irg, "optimized");
 
+  /* Generate assembly */
+
   char filename_s[64];
   snprintf(filename_s, sizeof(filename_s), "jit-%s.s", dictionary->ldname);
-  char filename_so[64];
-  snprintf(filename_so, sizeof(filename_so), "./jit-%s.so", dictionary->ldname);
-
   FILE *out = fopen(filename_s, "w");
   if(out == NULL) {
     perror("couldn't open assembly file for writing");
     exit(-1);
   }
-
   be_main(out, "cup");
   fclose(out);
+
+  /* Remove IRG from program to avoid emitting it again */
   remove_irp_irg(irg);
 
+  /* Assemble shared object */
+  char filename_so[64];
+  snprintf(filename_so, sizeof(filename_so), "./jit-%s.so", dictionary->ldname);
   char command[128];
-
   snprintf(command, sizeof(command), LINK_COMMAND,
 	   filename_so, filename_s);
   system(command);
 
+  /* dlopen() the shared object */
   void *dlhandle = dlopen(filename_so, RTLD_NOW|RTLD_GLOBAL);
   const char *err = dlerror();
   if(err)
     puts(err), exit(-1);
-
   dictionary->code = dlsym(dlhandle, dictionary->ldname);
   err = dlerror();
   if(err)
     puts(err), exit(-1);
 
+  /* Adjust visibility of the word's method entity for future
+     compilations */
   set_entity_visibility(dictionary->entity, ir_visibility_external);
   dictionary->smudge = 0;
 }
@@ -375,45 +397,56 @@ struct dict store_entry =
   .ldname = "store"
 };
 
-/* ( -- bb_else ) */
-void w_if()
+/* Emit code to fetch a value from the stack and fork control flow.
+   Two new basic blocks are created.  The current basic block is
+   finalized.  The basic block projected from the true condition is
+   made the current one.  The basic block for the false condition is
+   pushed on the forth stack. */
+void w_if() /* -- bb_false */
 {
   CROAK_UNLESS_COMPILING();
 
+  /* IR to load current forth data stack pointer */
   ir_node *ir_sp = new_Address(sp_entity);
   ir_node *load_ptr = new_Load(get_store(), ir_sp, mode_P, type_cell_ptr, 0);
   ir_node *load_ptr_res = new_Proj(load_ptr, mode_P, pn_Load_res);
   ir_node *load_ptr_mem = new_Proj(load_ptr, mode_M, pn_Load_M);
   set_store(load_ptr_mem);
 
+  /* IR to load value at top of stack sp[-1] */
   ir_node *offset = new_Const_long(mode_Ls, -sizeof(union cell));
   ir_node *add = new_Add(load_ptr_res, offset, mode_P);
-
   ir_node *load_data = new_Load(get_store(), add, mode_Lu, type_cell, 0);
   ir_node *load_data_res = new_Proj(load_data, mode_Lu, pn_Load_res);
   ir_node *load_data_mem = new_Proj(load_data, mode_M, pn_Load_M);
   set_store(load_data_mem);
 
+  /* IR to decrement stack pointer */
   ir_node *store_ptr = new_Store(get_store(), ir_sp, add, type_cell_ptr, 0);
   ir_node *store_ptr_mem = new_Proj(store_ptr, mode_M, pn_Store_M);
   set_store(store_ptr_mem);
 
+  /* IR to compare with zero */
   ir_node *cmp = new_Cmp(load_data_res,
 			 new_Const_long(mode_Lu, 0),
 			 ir_relation_less_greater);
   ir_node *cond = new_Cond(cmp);
 
+  /* Create block for condition true */
   ir_node *proj_true  = new_Proj(cond, mode_X, pn_Cond_true);
   ir_node *block_true = new_immBlock();
   add_immBlock_pred(block_true, proj_true);
 
+  /* Same for false */
   ir_node *proj_false = new_Proj(cond, mode_X, pn_Cond_false);
   ir_node *block_false = new_immBlock();
   add_immBlock_pred(block_false, proj_false);
 
+  /* Make true block the current one */
   mature_immBlock(get_cur_block());
-
   set_cur_block(block_true);
+
+  /* Push false block on stack */
   sp->a = block_false;
   sp++;
 }
@@ -426,18 +459,20 @@ struct dict if_entry =
   .next = &store_entry,
 };
 
-/* ( bb_else -- bb_then ) */
-void w_else()
+/* Finalize basic block under construction and switch to the basic
+   block on the stack.  Push the basic block following the true/false
+   blocks onto the stack. */
+void w_else() /* bb_false -- bb_then */
 {
   CROAK_UNLESS_COMPILING();
 
-  ir_node *bb_else = sp[-1].a;
+  ir_node *bb_false = sp[-1].a;
 
   ir_node *jump = new_Jmp();
   ir_node *bb_then = new_immBlock();
   add_immBlock_pred(bb_then, jump);
   mature_immBlock(get_cur_block());
-  set_cur_block(bb_else);
+  set_cur_block(bb_false);
 
   sp[-1].a = bb_then;
 }
@@ -450,6 +485,8 @@ struct dict else_entry =
   .next = &if_entry,
 };
 
+/* Finalize current basic block and make the one on the stack the
+   current one. */
 /* ( bb_then -- ) */
 void w_then()
 {
@@ -472,6 +509,7 @@ struct dict then_entry =
 
 struct dict *dictionary = &then_entry;
 
+/* initialize libfirm and set globally visible entities/types */
 static void initialize_firm(void)
 {
   ir_init();
@@ -497,6 +535,8 @@ static void initialize_firm(void)
   }
 }
 
+/* Add IR to the program that executes the forth word described by
+   ENTRY. */
 static void compile(struct dict *entry) {
   ir_node *mem = get_store();
 /*   ir_node *ptr = new_Const_long(mode_P, (long)(entry->code)); */
@@ -506,6 +546,9 @@ static void compile(struct dict *entry) {
   set_store(store_mem);
 }
 
+/* Read tokens and look them up in the dictionary.  When not
+   compiling, execute the words, Otherwise, add IR for their execution
+   to the word under construction. */
 void interpret()
 {
   struct dict *entry = dictionary;
