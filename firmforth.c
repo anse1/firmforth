@@ -229,6 +229,7 @@ void semicolon(void)
   fclose(out);
 
   /* Remove IRG from program to avoid emitting it again */
+  void remove_irp_irg(ir_graph *irg); /* not in public Firm API */
   remove_irp_irg(irg);
 
   /* Assemble shared object */
