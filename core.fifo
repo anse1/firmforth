@@ -1,6 +1,6 @@
-( -*- forth -*- )
-( Use firmforth primitives to define more words from )
-( the CORE section of the ANS94 standard. )
+\ -*- forth -*-
+\ Use firmforth primitives to define more words from the CORE section
+\ of the ANS94 standard.
 
 : 1+ 1 + ;
 
@@ -12,6 +12,8 @@
 : -1 1 negate ;
 : -2 2 negate ;
 : -3 3 negate ;
+: -4 4 negate ;
+: -5 5 negate ;
 
 : invert 1+ negate ;
 
@@ -57,7 +59,7 @@
 
 : = ( x1 x2 -- flag )
 	2dup > if
-		0
+		2drop 0
 	else
 		1- > if
 			1
@@ -75,4 +77,3 @@
 			swap 1 - fibonacci +
 		then
 	then ;
-
