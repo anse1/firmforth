@@ -2,7 +2,7 @@
 
 firmforth is a just-in-time-compiling forth-like system using [[http://libfirm.org][libfirm]]
 
-** design
+** Design
 
 Firmforth is not a real forth because it lacks the typical inner
 interpreter.  Its dictionary is just a list of functions that can be
@@ -19,7 +19,7 @@ When the definition is complete, the IR is optimized and compiled into
 a shared object and added to the word list using dlopen().  The IR is
 kept around for inlining future Calls during the optimization phase.
 
-** usage
+** Usage
 
 A couple of standard forth words are written in forth itself in the
 file =core.fifo=.  To get an interactive session with these words
@@ -27,8 +27,24 @@ defined, you could invoke firmforth like this:
 
 : make && cat core.fifo - | ./firmforth
 
-** goals
+** Goals
 - [X] Interactively compile forth words using graphs of Call nodes
 - [X] Add control flow primitives
 - [X] Keep IR of newly defined words around and inline them
 - [X] Keep IR of statically defined words around and inline them
+
+
+** Benchmark
+
+Time for compiling and executing the word =fibonacci= as defined in
+=core.fifo= for the number 35.
+
+|                   | compile [s] | compute [s] |
+|-------------------+-------------+-------------|
+| firmforth a278bf1 |        0.43 |        0.33 |
+| GNU Gforth 0.7.2  |        0.00 |        0.82 |
+| stubforth 5745163 |        0.00 |        0.83 |
+
+** Authors
+
+Andreas Seltenreich <seltenreich@gmx.de>
