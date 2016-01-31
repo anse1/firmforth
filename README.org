@@ -27,6 +27,13 @@ defined, you could invoke firmforth like this:
 
 : make && cat core.fifo - | ./firmforth
 
+Some of the forth words are currently implemented in C and cannot be
+inlined into just-in-time compiled ones unless the intermediate
+representation for them is made available.  This is possible by
+invoking [[https://github.com/MatzeB/cparser][cparser]] like this:
+
+: cparser --export-ir firmforth.c
+
 ** Goals
 - [X] Interactively compile forth words using graphs of Call nodes
 - [X] Add control flow primitives
