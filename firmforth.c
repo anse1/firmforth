@@ -45,6 +45,12 @@ int compiling = 0;
 /* Firm type of methods implementing forth words */
 ir_type *word_method_type = 0;
 
+/* not in public Firm API */
+void remove_irp_irg(ir_graph *irg);
+void add_irp_irg(ir_graph *irg);
+ir_graph *create_irg_copy(ir_graph *irg);
+void set_entity_irg(ir_entity *ent, ir_graph *irg);
+
 /* The first forth word method */
 void hi()
 {
@@ -173,6 +179,42 @@ static void create_return(void)
   set_cur_block(NULL);
 }
 
+static void after_inline_opt(ir_graph *irg)
+{
+  scalar_replacement_opt(irg);
+  optimize_graph_df(irg);
+  optimize_cf(irg);
+  combo(irg);
+}
+
+static void do_inline(ir_graph *irg)
+{
+  /* Need to temporarily re-add past IRGs to the IRP in order for the
+     call graph analysis to work */
+  for (struct dict *e = dictionary; e; e=e->next) {
+    if (!e->entity)
+      continue;
+    ir_graph *victim = get_entity_irg(e->entity);
+    if (!victim || victim == irg)
+      continue;
+    add_irp_irg(victim);
+  }
+
+  inline_functions(750 /* maxsize */,
+		   0 /* threshold */,
+		   after_inline_opt);
+
+  /* Flush old IRGs from IRP again */
+  for (struct dict *e = dictionary; e; e=e->next) {
+    if (!e->entity)
+      continue;
+    ir_graph *victim = get_entity_irg(e->entity);
+    if (!victim || victim == irg)
+      continue;
+    remove_irp_irg(victim);
+  }
+}
+
 /* End compilation of a word */
 void semicolon(void)
 {
@@ -195,6 +237,9 @@ void semicolon(void)
   optimize_load_store(irg);
 
   optimize_cf(irg);
+  dump_ir_graph(irg, "pre-inline");
+  do_inline(irg);
+  dump_ir_graph(irg, "inline");
 
   optimize_graph_df(irg);
   combo(irg);
@@ -216,6 +261,9 @@ void semicolon(void)
 
   dump_ir_graph(irg, "optimized");
 
+  /* Record the pristine IRG for future inlining. */
+  ir_graph *pristine = create_irg_copy(irg);
+
   /* Generate assembly */
 
   char filename_s[64];
@@ -229,7 +277,6 @@ void semicolon(void)
   fclose(out);
 
   /* Remove IRG from program to avoid emitting it again */
-  void remove_irp_irg(ir_graph *irg); /* not in public Firm API */
   remove_irp_irg(irg);
 
   /* Assemble shared object */
@@ -253,6 +300,11 @@ void semicolon(void)
   /* Adjust visibility of the word's method entity for future
      compilations */
   set_entity_visibility(dictionary->entity, ir_visibility_external);
+
+  /* restore pristine IRG for future inlining */
+  set_irg_entity(pristine, dictionary->entity);
+  set_entity_irg(dictionary->entity, pristine);
+
   dictionary->smudge = 0;
 }
 
@@ -398,7 +450,7 @@ struct dict store_entry =
   .ldname = "store"
 };
 
-/* Emit code to fetch a value from the stack and fork control flow.
+/* Construct IR to fetch a value from the stack and fork control flow.
    Two new basic blocks are created.  The current basic block is
    finalized.  The basic block projected from the true condition is
    made the current one.  The basic block for the false condition is

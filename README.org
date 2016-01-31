@@ -30,5 +30,5 @@ defined, you could invoke firmforth like this:
 ** goals
 - [X] Interactively compile forth words using graphs of Call nodes
 - [X] Add control flow primitives
-- [ ] Keep IR of newly defined words around and inline them
+- [X] Keep IR of newly defined words around and inline them
 - [ ] Keep IR of statically defined words around and inline them
