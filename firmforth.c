@@ -187,34 +187,6 @@ static void after_inline_opt(ir_graph *irg)
   combo(irg);
 }
 
-static void do_inline(ir_graph *irg)
-{
-  /* Need to temporarily re-add past IRGs to the IRP in order for the
-     call graph analysis to work */
-  for (struct dict *e = dictionary; e; e=e->next) {
-    if (!e->entity)
-      continue;
-    ir_graph *victim = get_entity_irg(e->entity);
-    if (!victim || victim == irg)
-      continue;
-    add_irp_irg(victim);
-  }
-
-  inline_functions(750 /* maxsize */,
-		   0 /* threshold */,
-		   after_inline_opt);
-
-  /* Flush old IRGs from IRP again */
-  for (struct dict *e = dictionary; e; e=e->next) {
-    if (!e->entity)
-      continue;
-    ir_graph *victim = get_entity_irg(e->entity);
-    if (!victim || victim == irg)
-      continue;
-    remove_irp_irg(victim);
-  }
-}
-
 /* End compilation of a word */
 void semicolon(void)
 {
@@ -238,7 +210,11 @@ void semicolon(void)
 
   optimize_cf(irg);
   dump_ir_graph(irg, "pre-inline");
-  do_inline(irg);
+
+  inline_functions(750 /* maxsize */,
+		   0 /* threshold */,
+		   after_inline_opt);
+
   dump_ir_graph(irg, "inline");
 
   optimize_graph_df(irg);
@@ -276,9 +252,6 @@ void semicolon(void)
   be_main(out, "cup");
   fclose(out);
 
-  /* Remove IRG from program to avoid emitting it again */
-  remove_irp_irg(irg);
-
   /* Assemble shared object */
   char filename_so[64];
   snprintf(filename_so, sizeof(filename_so), "./jit-%s.so", dictionary->ldname);
@@ -297,13 +270,14 @@ void semicolon(void)
   if(err)
     puts(err), exit(-1);
 
-  /* Adjust visibility of the word's method entity for future
-     compilations */
-  set_entity_visibility(dictionary->entity, ir_visibility_external);
-
   /* restore pristine IRG for future inlining */
+  remove_irp_irg(irg);
   set_irg_entity(pristine, dictionary->entity);
   set_entity_irg(dictionary->entity, pristine);
+  add_irp_irg(pristine);
+
+  /* Avoid repeated code generation for the entity */
+  set_entity_linkage(dictionary->entity, IR_LINKAGE_NO_CODEGEN);
 
   dictionary->smudge = 0;
 }
@@ -583,7 +557,6 @@ static void initialize_firm(void)
   for (struct dict *entry = dictionary; entry; entry = entry->next) {
     ident *id = new_id_from_str(entry->ldname ? entry->ldname : entry->name);
     ir_entity *entity = new_entity(global_type, id, word_method_type);
-    set_entity_visibility(entity, ir_visibility_external);
     entry->entity = entity;
   }
 }

@@ -2,6 +2,7 @@
 #define FIRMFORTH_H
 
 #include <stdint.h>
+#include <stdbool.h>
 #include <libfirm/firm.h>
 
 /* Type of elements on the forth data stack */
