@@ -571,7 +571,7 @@ static void initialize_firm(void)
   if (ir_import("firmforth.ir")) {
     fprintf(stderr, "Cannot load intermediate representation for forth primitives.\n"
 	    "You can generate it using \"cparser --export-ir firmforth.c\"\n"
-	    "Continuing anyway but you programs will be slow.\n");
+	    "Continuing anyway but your programs will be slow.\n");
   }
 
   sp_entity = find_global_entity("sp");
