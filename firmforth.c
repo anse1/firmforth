@@ -237,6 +237,8 @@ void semicolon(void)
 
   dump_ir_graph(irg, "optimized");
 
+  lower_highlevel_graph(irg);
+
   /* Record the pristine IRG for future inlining. */
   ir_graph *pristine = create_irg_copy(irg);
 
@@ -536,28 +538,66 @@ struct dict then_entry =
 
 struct dict *dictionary = &then_entry;
 
+static ir_entity *find_global_entity(const char *name)
+{
+  size_t n_members = get_compound_n_members(get_glob_type());
+  for (size_t i = 0; i < n_members; ++i) {
+    ir_entity *member = get_compound_member(get_glob_type(), i);
+
+    if (!strcmp(get_entity_ld_name(member), name))
+      return member;
+  }
+  return NULL;
+}
+
 /* initialize libfirm and set globally visible entities/types */
 static void initialize_firm(void)
 {
   ir_init();
+
+  /* initialize backend early */
   int res = be_parse_arg("isa=amd64");
   res |= be_parse_arg("pic=elf");
   be_get_backend_param();
   assert(res != 0);
+
+  /* create types */
   word_method_type = new_type_method(0, 0);
   type_cell = new_type_primitive(mode_Ls);
   type_cell_ptr = find_pointer_type_to_type(type_cell);
 
-  /* create firm entities for globals in our program */
-  ir_type *global_type = get_glob_type();
-  sp_entity = new_entity(global_type, new_id_from_str("sp"), type_cell_ptr);
+  /* If we do have IR for ourselves, load it so we can inline
+     primitives later instead of calling them. */
+  if (ir_import("firmforth.ir")) {
+    fprintf(stderr, "Cannot load intermediate representation for forth primitives.\n"
+	    "You can generate it using \"cparser --export-ir firmforth.c\"\n"
+	    "Continuing anyway but you programs will be slow.\n");
+  }
+
+  sp_entity = find_global_entity("sp");
+  if (!sp_entity)
+    sp_entity = new_entity(get_glob_type(), new_id_from_str("sp"), type_cell_ptr);
 
   /* Add entities for functions.  This is needed as long as the code
      generator can't call a function at an absolute address */
   for (struct dict *entry = dictionary; entry; entry = entry->next) {
-    ident *id = new_id_from_str(entry->ldname ? entry->ldname : entry->name);
-    ir_entity *entity = new_entity(global_type, id, word_method_type);
+    const char* ld_name = entry->ldname ? entry->ldname : entry->name;
+    ir_entity *entity = find_global_entity(ld_name);
+    if (!entity) {
+      ident *id = new_id_from_str(ld_name);
+      entity = new_entity(get_glob_type(), id, word_method_type);
+    }
+    set_entity_linkage(entity, IR_LINKAGE_NO_CODEGEN);
     entry->entity = entity;
+  }
+
+#define foreach_irp_irg(idx, irg) \
+	for (bool irg##__b = true; irg##__b; irg##__b = false) \
+		for (size_t idx = 0, irg##__n = get_irp_n_irgs(); irg##__b && idx != irg##__n; ++idx) \
+			for (ir_graph *const irg = (irg##__b = false, get_irp_irg(idx)); !irg##__b; irg##__b = true)
+
+  foreach_irp_irg(i, old_irg) {
+    set_entity_linkage(get_irg_entity(old_irg), IR_LINKAGE_NO_CODEGEN);
   }
 }
 
