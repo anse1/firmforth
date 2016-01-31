@@ -571,7 +571,7 @@ static void initialize_firm(void)
   if (ir_import("firmforth.ir")) {
     fprintf(stderr, "Cannot load intermediate representation for forth primitives.\n"
 	    "You can generate it using \"cparser --export-ir firmforth.c\"\n"
-	    "Continuing anyway but your programs will be slow.\n");
+	    "Continuing anyway but your programs will be slower.\n");
   }
 
   sp_entity = find_global_entity("sp");
@@ -596,6 +596,7 @@ static void initialize_firm(void)
 		for (size_t idx = 0, irg##__n = get_irp_n_irgs(); irg##__b && idx != irg##__n; ++idx) \
 			for (ir_graph *const irg = (irg##__b = false, get_irp_irg(idx)); !irg##__b; irg##__b = true)
 
+  /* Do not generate Code for the imported IR */
   foreach_irp_irg(i, old_irg) {
     set_entity_linkage(get_irg_entity(old_irg), IR_LINKAGE_NO_CODEGEN);
   }
