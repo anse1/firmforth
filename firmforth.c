@@ -15,7 +15,7 @@
 #define LINK_COMMAND "gcc -shared -o %s %s"
 
 /* Forth data stack */
-union cell data_stack[1<<10];
+union cell data_stack[1<<20];
 
 /* Firm type for elements of the data stack */
 ir_type *type_cell;
@@ -229,15 +229,18 @@ void semicolon(void)
   optimize_graph_df(irg);
   remove_confirms(irg);
   optimize_cf(irg);
+
+  set_entity_visibility(sp_entity, ir_visibility_local);
   optimize_load_store(irg);
+  set_entity_visibility(sp_entity, ir_visibility_external);
+
   optimize_graph_df(irg);
   combo(irg);
   place_code(irg);
   optimize_cf(irg);
+  lower_highlevel_graph(irg);
 
   dump_ir_graph(irg, "optimized");
-
-  lower_highlevel_graph(irg);
 
   /* Record the pristine IRG for future inlining. */
   ir_graph *pristine = create_irg_copy(irg);
