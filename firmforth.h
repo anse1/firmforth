@@ -21,7 +21,6 @@ typedef void (*word)();
 struct dict {
   const char *name; /* Forth word */
   int immediate : 1; /* execute even when compiling */
-  int smudge : 1; /* word is under construction */
   word code; /* pointer to function implementing the word */
   ir_entity *entity; /* Firm entity for function */
   const char *ldname; /* Optionally override .name as linker symbol */

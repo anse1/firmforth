@@ -140,7 +140,6 @@ void colon()
   /* create dictionary entry */
   struct dict *entry = malloc(sizeof(struct dict));
   entry->name = strdup(next());
-  entry->smudge = 1;
   entry->code = 0;
   entry->immediate = 0;
   entry->next = dictionary;
@@ -283,8 +282,6 @@ void semicolon(void)
 
   /* Avoid repeated code generation for the entity */
   set_entity_linkage(dictionary->entity, IR_LINKAGE_NO_CODEGEN);
-
-  dictionary->smudge = 0;
 }
 
 struct dict semicolon_entry =
