@@ -3,7 +3,7 @@
 \ of the ANS94 standard.
 \
 \ The early definitions look very inelegant, but they get better as
-\ the langugage is extended and becomes more usable.  Libfirm's
+\ the language is extended and becomes more usable.  Libfirm's
 \ optimizations do a pretty good job at removing lots of the apparent
 \ inefficiencies in these definitions.
 
