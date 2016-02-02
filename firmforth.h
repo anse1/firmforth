@@ -15,8 +15,10 @@ union cell {
   void **aa;
 };
 
+typedef union cell cell;
+
 /* Type of functions implementing forth words */
-typedef void (*word)();
+typedef cell* (*word)(cell *sp);
 
 struct dict {
   const char *name; /* Forth word */

@@ -20,11 +20,7 @@ union cell data_stack[1<<20];
 /* Firm type for elements of the data stack */
 ir_type *type_cell;
 
-/* Forth stack pointer */
-union cell *sp = data_stack;
-
-/* Firm entity and type for stack pointer */
-ir_entity *sp_entity;
+/* Firm type for stack pointer */
 ir_type *type_cell_ptr;
 
 /* The interpreter splits the input into tokens and searches the
@@ -40,7 +36,7 @@ int compiling = 0;
   } while (0)
 
 #define CROAK_UNLESS_COMPILING() \
-  do {if (!compiling) {fprintf(stderr, "ERROR: not in compilation mode\n");return;}} while (0)
+  do {if (!compiling) {fprintf(stderr, "ERROR: not in compilation mode\n");return sp;}} while (0)
 
 /* Firm type of methods implementing forth words */
 ir_type *word_method_type = 0;
@@ -52,9 +48,10 @@ ir_graph *create_irg_copy(ir_graph *irg);
 void set_entity_irg(ir_entity *ent, ir_graph *irg);
 
 /* The first forth word method */
-void hi()
+cell* hi(cell *sp)
 {
   puts("firmforth " GITREV);
+  return sp;
 }
 
 /* Forth dictionary entry for "hi" */
@@ -65,10 +62,11 @@ struct dict hi_entry = {
 
 /* Definitions of standard forth words have no comments on them.  See
    ANSI X3.215-1994 for their definition. */
-void dot()
+cell* dot(cell *sp)
 {
   sp--;
   printf("%ld\n", sp->i);
+  return sp;
 }
 
 struct dict dot_entry = {
@@ -78,10 +76,11 @@ struct dict dot_entry = {
   .ldname = "dot"
 };
 
-void add()
+cell* add(cell *sp)
 {
   sp--;
   sp[-1].i = sp[-1].i + sp[0].i;
+  return sp;
 }
 
 struct dict add_entry = {
@@ -91,10 +90,11 @@ struct dict add_entry = {
   .ldname = "add"
 };
 
-void greater_than()
+cell* greater_than(cell *sp)
 {
   sp -= 1;
   sp[-1].i = sp[-1].i > sp[0].i ? 1 : 0;
+  return sp;
 }
 
 struct dict greater_than_entry =
@@ -133,7 +133,7 @@ static const char *next() {
 }
 
 /* Start compilation of a new word */
-void colon()
+cell* colon(cell *sp)
 {
   compiling = 1; /* switch interpreter mode */
 
@@ -152,10 +152,15 @@ void colon()
   set_entity_ld_ident(entry->entity, id);
 
   /* Create IR graph */
-  ir_graph *irg = new_ir_graph(entry->entity, 0);
+  ir_graph *irg = new_ir_graph(entry->entity, 1);
   set_current_ir_graph(irg);
 
+  ir_node *proj_arg_t = new_Proj(get_irg_start(irg), mode_T, pn_Start_T_args);
+  /* IR to load current forth data stack pointer */
+  set_value(0, new_Proj(proj_arg_t, mode_P, 0));
+
   entry->ldname = get_id_str(id);
+  return sp;
 }
 
 struct dict colon_entry =
@@ -169,7 +174,8 @@ struct dict colon_entry =
 static void create_return(void)
 {
   ir_node   *mem         = get_store();
-  ir_node   *return_node = new_Return(mem, 0, 0);
+  ir_node *ir_sp = get_value(0, mode_P);
+  ir_node   *return_node = new_Return(mem, 1, &ir_sp);
 
   ir_node *end_block   = get_irg_end_block(current_ir_graph);
   add_immBlock_pred(end_block, return_node);
@@ -187,7 +193,7 @@ static void after_inline_opt(ir_graph *irg)
 }
 
 /* End compilation of a word */
-void semicolon(void)
+cell* semicolon(cell *sp)
 {
   CROAK_UNLESS_COMPILING();
   ASSERT_STACK();
@@ -229,9 +235,9 @@ void semicolon(void)
   remove_confirms(irg);
   optimize_cf(irg);
 
-  set_entity_visibility(sp_entity, ir_visibility_local);
+/*   set_entity_visibility(sp_entity, ir_visibility_local); */
   optimize_load_store(irg);
-  set_entity_visibility(sp_entity, ir_visibility_external);
+/*   set_entity_visibility(sp_entity, ir_visibility_external); */
 
   optimize_graph_df(irg);
   combo(irg);
@@ -282,6 +288,7 @@ void semicolon(void)
 
   /* Avoid repeated code generation for the entity */
   set_entity_linkage(dictionary->entity, IR_LINKAGE_NO_CODEGEN);
+  return sp;
 }
 
 struct dict semicolon_entry =
@@ -293,10 +300,11 @@ struct dict semicolon_entry =
   .ldname = "semicolon"
 };
 
-void key()
+cell* key(cell *sp)
 {
   sp->i = getchar();
   sp++;
+  return sp;
 }
 
 struct dict key_entry =
@@ -306,10 +314,11 @@ struct dict key_entry =
   .next = &semicolon_entry,
 };
 
-void emit()
+cell* emit(cell *sp)
 {
   sp--;
   putchar(sp->i);
+  return sp;
 }
 
 struct dict emit_entry =
@@ -319,10 +328,11 @@ struct dict emit_entry =
   .next = &key_entry,
 };
 
-void sp_load()
+cell* sp_load(cell *sp)
 {
   sp->a = sp;
   sp++;
+  return sp;
 }
 
 struct dict sp_load_entry =
@@ -333,9 +343,10 @@ struct dict sp_load_entry =
   .ldname = "sp_load"
 };
 
-void sp_store()
+cell* sp_store(cell *sp)
 {
   sp = sp[-1].a;
+  return sp;
 }
 
 struct dict sp_store_entry =
@@ -346,9 +357,10 @@ struct dict sp_store_entry =
   .ldname = "sp_store"
 };
 
-void cells()
+cell* cells(cell *sp)
 {
   sp[-1].i = sizeof(union cell) * sp[-1].i;
+  return sp;
 }
 
 struct dict cells_entry =
@@ -358,10 +370,11 @@ struct dict cells_entry =
   .next = &sp_store_entry,
 };
 
-void zero()
+cell* zero(cell *sp)
 {
   sp->i = 0;
   sp++;
+  return sp;
 }
 
 struct dict zero_entry =
@@ -372,10 +385,11 @@ struct dict zero_entry =
   .ldname = "zero"
 };
 
-void one()
+cell* one(cell *sp)
 {
   sp->i = 1;
   sp++;
+  return sp;
 }
 
 struct dict one_entry =
@@ -386,9 +400,10 @@ struct dict one_entry =
   .ldname = "one"
 };
 
-void negate()
+cell* negate(cell *sp)
 {
   sp[-1].i = -sp[-1].i;
+  return sp;
 }
 
 struct dict negate_entry =
@@ -398,9 +413,10 @@ struct dict negate_entry =
   .next = &one_entry,
 };
 
-void load()
+cell* load(cell *sp)
 {
   sp[-1].a = *(sp[-1].aa);
+  return sp;
 }
 
 struct dict load_entry =
@@ -412,10 +428,11 @@ struct dict load_entry =
 };
 
 /* ( x a-addr -- ) */
-void store()
+cell* store(cell *sp)
 {
   *(sp[-1].aa) = sp[-2].a;
   sp -= 2;
+  return sp;
 }
 
 struct dict store_entry =
@@ -431,29 +448,19 @@ struct dict store_entry =
    finalized.  The basic block projected from the true condition is
    made the current one.  The basic block for the false condition is
    pushed on the forth stack. */
-void w_if() /* -- bb_false */
+cell* w_if(cell *sp) /* -- bb_false */
 {
   CROAK_UNLESS_COMPILING();
 
-  /* IR to load current forth data stack pointer */
-  ir_node *ir_sp = new_Address(sp_entity);
-  ir_node *load_ptr = new_Load(get_store(), ir_sp, mode_P, type_cell_ptr, 0);
-  ir_node *load_ptr_res = new_Proj(load_ptr, mode_P, pn_Load_res);
-  ir_node *load_ptr_mem = new_Proj(load_ptr, mode_M, pn_Load_M);
-  set_store(load_ptr_mem);
-
   /* IR to load value at top of stack sp[-1] */
   ir_node *offset = new_Const_long(mode_Ls, -sizeof(union cell));
-  ir_node *add = new_Add(load_ptr_res, offset, mode_P);
-  ir_node *load_data = new_Load(get_store(), add, mode_Lu, type_cell, 0);
+  ir_node *ir_sp = get_value(0, mode_P);
+  ir_sp = new_Add(ir_sp, offset, mode_P);
+  set_value(0, ir_sp);
+  ir_node *load_data = new_Load(get_store(), ir_sp, mode_Lu, type_cell, 0);
   ir_node *load_data_res = new_Proj(load_data, mode_Lu, pn_Load_res);
   ir_node *load_data_mem = new_Proj(load_data, mode_M, pn_Load_M);
   set_store(load_data_mem);
-
-  /* IR to decrement stack pointer */
-  ir_node *store_ptr = new_Store(get_store(), ir_sp, add, type_cell_ptr, 0);
-  ir_node *store_ptr_mem = new_Proj(store_ptr, mode_M, pn_Store_M);
-  set_store(store_ptr_mem);
 
   /* IR to compare with zero */
   ir_node *cmp = new_Cmp(load_data_res,
@@ -478,6 +485,7 @@ void w_if() /* -- bb_false */
   /* Push false block on stack */
   sp->a = block_false;
   sp++;
+  return sp;
 }
 
 struct dict if_entry =
@@ -491,7 +499,7 @@ struct dict if_entry =
 /* Finalize basic block under construction and switch to the basic
    block on the stack.  Push the basic block following the true/false
    blocks onto the stack. */
-void w_else() /* bb_false -- bb_then */
+cell* w_else(cell *sp) /* bb_false -- bb_then */
 {
   CROAK_UNLESS_COMPILING();
 
@@ -504,6 +512,7 @@ void w_else() /* bb_false -- bb_then */
   set_cur_block(bb_false);
 
   sp[-1].a = bb_then;
+  return sp;
 }
 
 struct dict else_entry =
@@ -517,7 +526,7 @@ struct dict else_entry =
 /* Finalize current basic block and make the one on the stack the
    current one. */
 /* ( bb_then -- ) */
-void w_then()
+cell* w_then(cell *sp)
 {
   CROAK_UNLESS_COMPILING();
   sp--;
@@ -526,6 +535,7 @@ void w_then()
   add_immBlock_pred(bb_then, jump);
   mature_immBlock(get_cur_block());
   set_cur_block(bb_then);
+  return sp;
 }
 
 struct dict then_entry =
@@ -551,7 +561,7 @@ static ir_entity *find_global_entity(const char *name)
 }
 
 /* initialize libfirm and set globally visible entities/types */
-static void initialize_firm(void)
+static void initialize_firm()
 {
   ir_init();
 
@@ -562,9 +572,11 @@ static void initialize_firm(void)
   assert(res != 0);
 
   /* create types */
-  word_method_type = new_type_method(0, 0);
+  word_method_type = new_type_method(1, 1);
   type_cell = new_type_primitive(mode_Ls);
-  type_cell_ptr = find_pointer_type_to_type(type_cell);
+  type_cell_ptr = new_type_pointer(type_cell);
+  set_method_res_type(word_method_type, 0, type_cell_ptr);
+  set_method_param_type(word_method_type, 0, type_cell_ptr);
 
   /* If we do have IR for ourselves, load it so we can inline
      primitives later instead of calling them. */
@@ -573,10 +585,6 @@ static void initialize_firm(void)
 	    "You can generate it using \"cparser --export-ir firmforth.c\"\n"
 	    "Continuing anyway but your programs will be slower.\n");
   }
-
-  sp_entity = find_global_entity("sp");
-  if (!sp_entity)
-    sp_entity = new_entity(get_glob_type(), new_id_from_str("sp"), type_cell_ptr);
 
   /* Add entities for functions.  This is needed as long as the code
      generator can't call a function at an absolute address */
@@ -608,15 +616,19 @@ static void compile(struct dict *entry) {
   ir_node *mem = get_store();
 /*   ir_node *ptr = new_Const_long(mode_P, (long)(entry->code)); */
   ir_node *ptr = new_Address(entry->entity);
-  ir_node *call = new_Call(mem, ptr, 0, 0, word_method_type);
+  ir_node *ir_sp = get_value(0, mode_P);
+  ir_node *call = new_Call(mem, ptr, 1, &ir_sp, word_method_type);
   ir_node *store_mem = new_Proj(call, mode_M, pn_Call_M);
   set_store(store_mem);
+  ir_sp = new_Proj(call, mode_T, pn_Call_T_result);
+  ir_sp = new_Proj(ir_sp, mode_P, 0);
+  set_value(0, ir_sp);
 }
 
 /* Read tokens and look them up in the dictionary.  When not
    compiling, execute the words, Otherwise, add IR for their execution
    to the word under construction. */
-void interpret()
+cell* interpret(cell *sp)
 {
   struct dict *entry = dictionary;
   const char *token;
@@ -637,7 +649,7 @@ void interpret()
     if (compiling && !entry->immediate)
       compile(entry);
     else
-      entry->code();
+      sp = entry->code(sp);
     ASSERT_STACK();
   } else if ((token[0] >= '0' && token[0] <= '9') || token[0] == '-') {
     if (compiling) {
@@ -649,11 +661,13 @@ void interpret()
   } else {
     fprintf(stderr, "ERROR: unknown word\n");
   }
+  return sp;
 }
 
 int main()
 {
   initialize_firm();
+  cell *sp = data_stack;
   while(1)
-    interpret();
+    sp = interpret(sp);
 }
