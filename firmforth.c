@@ -445,10 +445,11 @@ struct dict store_entry =
 
 /* Construct IR to fetch a value from the stack and fork control flow.
    Two new basic blocks are created.  The current basic block is
-   finalized.  The basic block projected from the true condition is
-   made the current one.  The basic block for the false condition is
-   pushed on the forth stack. */
-cell* w_if(cell *sp) /* -- bb_false */
+   pushed on the stack for future maturing.  The basic block
+   projected from the true condition is made the current one.  The
+   basic block for the false condition is pushed on the stack as
+   well. */
+cell* w_if(cell *sp) /* -- bb_cond bb_false */
 {
   CROAK_UNLESS_COMPILING();
 
@@ -478,8 +479,11 @@ cell* w_if(cell *sp) /* -- bb_false */
   ir_node *block_false = new_immBlock();
   add_immBlock_pred(block_false, proj_false);
 
-  /* Make true block the current one */
-  mature_immBlock(get_cur_block());
+  /* May not mature the current block yet because repeat might add a
+     backedge to it if we are in a "loop header" */
+  sp->a = get_cur_block();
+  sp++;
+
   set_cur_block(block_true);
 
   /* Push false block on stack */
@@ -496,9 +500,18 @@ struct dict if_entry =
   .next = &store_entry,
 };
 
-/* Finalize basic block under construction and switch to the basic
-   block on the stack.  Push the basic block following the true/false
-   blocks onto the stack. */
+/* also implements while word */
+struct dict while_entry =
+{
+  .name = "while",
+  .immediate = 1,
+  .code = w_if,
+  .next = &if_entry,
+};
+
+/* Mature the basic block under construction and switch construction
+   to the basic block on the stack.  Push the basic block following
+   the true/false blocks onto the stack. */
 cell* w_else(cell *sp) /* bb_false -- bb_then */
 {
   CROAK_UNLESS_COMPILING();
@@ -520,20 +533,25 @@ struct dict else_entry =
   .name = "else",
   .immediate = 1,
   .code = w_else,
-  .next = &if_entry,
+  .next = &while_entry,
 };
 
-/* Finalize current basic block and make the one on the stack the
-   current one. */
-/* ( bb_then -- ) */
+/* Finalize current basic block as well as the condition block and
+   make the one on the stack the current one. */
+/* ( bb_cond bb_then -- ) */
 cell* w_then(cell *sp)
 {
   CROAK_UNLESS_COMPILING();
   sp--;
   ir_node *bb_then = sp->a;
   ir_node *jump = new_Jmp();
-  add_immBlock_pred(bb_then, jump);
   mature_immBlock(get_cur_block());
+  add_immBlock_pred(bb_then, jump);
+
+  sp--;
+  ir_node *bb_cond = sp->a;
+  mature_immBlock(bb_cond);
+
   set_cur_block(bb_then);
   return sp;
 }
@@ -546,7 +564,71 @@ struct dict then_entry =
   .next = &else_entry,
 };
 
-struct dict *dictionary = &then_entry;
+/* Begin loop construction */
+/* -- bb_head */
+cell *begin(cell *sp)
+{
+  ir_node *jump = new_Jmp();
+  mature_immBlock(get_cur_block());
+
+  ir_node *bb_head = new_immBlock();
+  sp->a = bb_head;
+  sp++;
+  set_cur_block(bb_head);
+  add_immBlock_pred(bb_head, jump);
+  return sp;
+}
+
+struct dict begin_entry =
+{
+  .name = "begin",
+  .immediate = 1,
+  .code = begin,
+  .next = &then_entry
+};
+
+/* Finalize loop construction */
+/* ( bb_head bb_then -- ) */
+cell *repeat(cell *sp)
+{
+  CROAK_UNLESS_COMPILING();
+  sp--;
+  ir_node *bb_then = sp->a;
+  ir_node *jump = new_Jmp();
+  mature_immBlock(get_cur_block());
+
+  sp--;
+  ir_node *bb_head = sp->a;
+  add_immBlock_pred(bb_head, jump);
+  mature_immBlock(bb_head);
+
+  set_cur_block(bb_then);
+  return sp;
+}
+
+struct dict repeat_entry =
+{
+  .name = "repeat",
+  .immediate = 1,
+  .code = repeat,
+  .next = &begin_entry
+};
+
+static void compile(struct dict *entry)
+{
+  ir_node *mem = get_store();
+/*   ir_node *ptr = new_Const_long(mode_P, (long)(entry->code)); */
+  ir_node *ptr = new_Address(entry->entity);
+  ir_node *ir_sp = get_value(0, mode_P);
+  ir_node *call = new_Call(mem, ptr, 1, &ir_sp, word_method_type);
+  mem = new_Proj(call, mode_M, pn_Call_M);
+  set_store(mem);
+  ir_sp = new_Proj(call, mode_T, pn_Call_T_result);
+  ir_sp = new_Proj(ir_sp, mode_P, 0);
+  set_value(0, ir_sp);
+}
+
+struct dict *dictionary = &repeat_entry;
 
 static ir_entity *find_global_entity(const char *name)
 {
@@ -612,19 +694,6 @@ static void initialize_firm()
 
 /* Add IR to the program to execute the forth word described by
    ENTRY. */
-static void compile(struct dict *entry) {
-  ir_node *mem = get_store();
-/*   ir_node *ptr = new_Const_long(mode_P, (long)(entry->code)); */
-  ir_node *ptr = new_Address(entry->entity);
-  ir_node *ir_sp = get_value(0, mode_P);
-  ir_node *call = new_Call(mem, ptr, 1, &ir_sp, word_method_type);
-  ir_node *store_mem = new_Proj(call, mode_M, pn_Call_M);
-  set_store(store_mem);
-  ir_sp = new_Proj(call, mode_T, pn_Call_T_result);
-  ir_sp = new_Proj(ir_sp, mode_P, 0);
-  set_value(0, ir_sp);
-}
-
 /* Read tokens and look them up in the dictionary.  When not
    compiling, execute the words, Otherwise, add IR for their execution
    to the word under construction. */
