@@ -9,6 +9,7 @@
 
 #include "firmforth.h"
 #include "gitrev.h"
+#include "mangle.h"
 
 /* Format string to generate a shared object file (first parameter)
    for dlopen() from assembly file (second parameter). */
@@ -145,8 +146,15 @@ cell* colon(cell *sp)
   entry->next = dictionary;
   dictionary = entry;
 
+  /* Create valid linker symbol */
+  ident *id;
+  {
+    char *mangled = mangle("word_%03d_", entry->name, "");
+    id = id_unique(mangled);
+    free(mangled);
+  }
+
   /* Create Firm entity for word */
-  ident *id = id_unique("word_%03x");
   ir_type   *global_type = get_glob_type();
   entry->entity = new_entity(global_type, id, word_method_type);
   set_entity_ld_ident(entry->entity, id);

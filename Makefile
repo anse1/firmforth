@@ -11,7 +11,7 @@ CFLAGS += $(FIRM_CFLAGS) $(ADDCFLAGS)
 
 LFLAGS = $(FIRM_LIBS) -ldl
 
-SOURCES := firmforth.c
+SOURCES := firmforth.c mangle.c
 OBJECTS = $(SOURCES:%.c=build/%.o)
 
 Q = @
@@ -46,4 +46,4 @@ build/%.o: %.c
 clean:
 	@echo '===> CLEAN'
 	$(Q)rm -rf build $(GOAL) .depend
-	$(Q)rm -rf jit-word_*.so word_*.vcg jit-word_*.s
+	$(Q)rm -rf jit-word_*.so word_*.vcg jit-word_*.s 
