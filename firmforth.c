@@ -234,11 +234,7 @@ cell* semicolon(cell *sp)
   optimize_graph_df(irg);
   remove_confirms(irg);
   optimize_cf(irg);
-
-/*   set_entity_visibility(sp_entity, ir_visibility_local); */
   optimize_load_store(irg);
-/*   set_entity_visibility(sp_entity, ir_visibility_external); */
-
   optimize_graph_df(irg);
   combo(irg);
   place_code(irg);
