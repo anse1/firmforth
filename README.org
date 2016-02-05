@@ -43,6 +43,7 @@ intermediate representation for them can be made available by invoking
 - [X] Add control flow primitives
 - [X] Keep IR of newly defined words around and inline them
 - [X] Keep IR of statically defined words around and inline them
+- [ ] Use libfirm's binary emitter instead of dlopen()
 
 ** Benchmark
 The table below lists times required for compiling and executing the
