@@ -28,8 +28,8 @@
 : < ( x1 x2 -- flag )
 	1- > negate ;
 
-: drop ( a -- )
-  sp@ 1 cells - sp! ;
+\ : drop ( a -- )
+\   sp@ 1 cells - sp! ;
 
 : 2drop ( a b -- )
   drop drop ;
@@ -37,12 +37,6 @@
 : dup ( a -- a a )
   sp@ -1 cells + @ ;
 
-: swap ( a b -- b a )
-  dup
-  sp@ 3 cells - @
-  sp@ 3 cells - !
-  sp@ 3 cells - ! ;
-  
 : pick ( xu ... x1 x0 u -- xu ... x1 x0 xu )
   2 + cells sp@ swap - @ ;
 
@@ -64,17 +58,6 @@
 
 : * ( n1 n2 -- n1*n2 )
 	0 *' swap drop swap drop ;
-
-: = ( x1 x2 -- flag )
-	2dup > if
-		2drop 0
-	else
-		1- > if
-			1
-		else
-			0
-		then
-	then ;
 
 : fibonacci
 	dup 0= if

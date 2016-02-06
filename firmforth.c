@@ -374,6 +374,47 @@ struct dict cells_entry =
   .next = &sp_store_entry,
 };
 
+cell *swap(cell *sp)
+{
+  cell tmp = sp[-1];
+  sp[-1] = sp[-2];
+  sp[-2] = tmp;
+  return sp;
+}
+
+struct dict swap_entry =
+{
+  .name = "swap",
+  .code = swap,
+  .next = &cells_entry,
+};
+
+cell *drop(cell *sp)
+{
+  return --sp;
+}
+
+struct dict drop_entry =
+{
+  .name = "drop",
+  .code = drop,
+  .next = &swap_entry,
+};
+
+cell *equal(cell *sp)
+{
+  sp[-2].i = sp[-2].i == sp[-1].i;
+  return --sp;
+}
+
+struct dict equal_entry =
+{
+  .name = "=",
+  .code = equal,
+  .next = &drop_entry,
+  .ldname = "equal",
+};
+
 cell* zero(cell *sp)
 {
   sp->i = 0;
@@ -385,7 +426,7 @@ struct dict zero_entry =
 {
   .name = "0",
   .code = zero,
-  .next = &cells_entry,
+  .next = &equal_entry,
   .ldname = "zero"
 };
 
