@@ -52,7 +52,7 @@ machine for various forth systems.
 
 |                                | compile [s] | execute [s] |
 |--------------------------------+-------------+-------------|
-| firmforth 39c2e85              |        0.49 |        0.13 |
+| firmforth 0e1784f              |        0.35 |        0.15 |
 | GNU Gforth 0.7.2 (gforth-fast) |        0.00 |        0.39 |
 | stubforth 5745163              |        0.00 |        0.83 |
 
