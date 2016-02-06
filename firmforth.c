@@ -200,6 +200,53 @@ static void after_inline_opt(ir_graph *irg)
   combo(irg);
 }
 
+void codegen(struct dict *entry) {
+  ir_entity *method = entry->entity;
+  ir_graph *irg = get_entity_irg(method);
+
+  /* Record the pristine IRG for future inlining. */
+  ir_graph *pristine = create_irg_copy(irg);
+
+  /* Generate assembly */
+
+  char filename_s[64];
+  snprintf(filename_s, sizeof(filename_s), "jit-%s.s", entry->ldname);
+  FILE *out = fopen(filename_s, "w");
+  if(out == NULL) {
+    perror("couldn't open assembly file for writing");
+    exit(-1);
+  }
+  be_main(out, "cup");
+  fclose(out);
+
+  /* Assemble shared object */
+  char filename_so[64];
+  snprintf(filename_so, sizeof(filename_so), "./jit-%s.so", entry->ldname);
+  char command[128];
+  snprintf(command, sizeof(command), LINK_COMMAND,
+	   filename_so, filename_s);
+  system(command);
+
+  /* dlopen() the shared object */
+  void *dlhandle = dlopen(filename_so, RTLD_NOW|RTLD_GLOBAL);
+  const char *err = dlerror();
+  if(err)
+    puts(err), exit(-1);
+  entry->code = dlsym(dlhandle, entry->ldname);
+  err = dlerror();
+  if(err)
+    puts(err), exit(-1);
+
+  /* restore pristine IRG for future inlining */
+  remove_irp_irg(irg);
+  set_irg_entity(pristine, entry->entity);
+  set_entity_irg(entry->entity, pristine);
+  add_irp_irg(pristine);
+
+  /* Avoid repeated code generation for the entity */
+  set_entity_linkage(dictionary->entity, IR_LINKAGE_NO_CODEGEN);
+}
+
 /* End compilation of a word */
 cell* semicolon(cell *sp)
 {
@@ -251,47 +298,8 @@ cell* semicolon(cell *sp)
 
   dump_ir_graph(irg, "optimized");
 
-  /* Record the pristine IRG for future inlining. */
-  ir_graph *pristine = create_irg_copy(irg);
+/*   codegen(dictionary); */
 
-  /* Generate assembly */
-
-  char filename_s[64];
-  snprintf(filename_s, sizeof(filename_s), "jit-%s.s", dictionary->ldname);
-  FILE *out = fopen(filename_s, "w");
-  if(out == NULL) {
-    perror("couldn't open assembly file for writing");
-    exit(-1);
-  }
-  be_main(out, "cup");
-  fclose(out);
-
-  /* Assemble shared object */
-  char filename_so[64];
-  snprintf(filename_so, sizeof(filename_so), "./jit-%s.so", dictionary->ldname);
-  char command[128];
-  snprintf(command, sizeof(command), LINK_COMMAND,
-	   filename_so, filename_s);
-  system(command);
-
-  /* dlopen() the shared object */
-  void *dlhandle = dlopen(filename_so, RTLD_NOW|RTLD_GLOBAL);
-  const char *err = dlerror();
-  if(err)
-    puts(err), exit(-1);
-  dictionary->code = dlsym(dlhandle, dictionary->ldname);
-  err = dlerror();
-  if(err)
-    puts(err), exit(-1);
-
-  /* restore pristine IRG for future inlining */
-  remove_irp_irg(irg);
-  set_irg_entity(pristine, dictionary->entity);
-  set_entity_irg(dictionary->entity, pristine);
-  add_irp_irg(pristine);
-
-  /* Avoid repeated code generation for the entity */
-  set_entity_linkage(dictionary->entity, IR_LINKAGE_NO_CODEGEN);
   return sp;
 }
 
@@ -762,8 +770,11 @@ cell* interpret(cell *sp)
     ASSERT_STACK();
     if (compiling && !entry->immediate)
       compile(entry);
-    else
+    else {
+      if (!entry->code)
+	codegen(entry);
       sp = entry->code(sp);
+    }
     ASSERT_STACK();
   } else if ((token[0] >= '0' && token[0] <= '9') || token[0] == '-') {
     if (compiling) {
