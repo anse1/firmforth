@@ -39,6 +39,11 @@ int compiling = 0;
 #define CROAK_UNLESS_COMPILING() \
   do {if (!compiling) {fprintf(stderr, "ERROR: not in compilation mode\n");return sp;}} while (0)
 
+#define foreach_irp_irg(idx, irg) \
+	for (bool irg##__b = true; irg##__b; irg##__b = false) \
+		for (size_t idx = 0, irg##__n = get_irp_n_irgs(); irg##__b && idx != irg##__n; ++idx) \
+			for (ir_graph *const irg = (irg##__b = false, get_irp_irg(idx)); !irg##__b; irg##__b = true)
+
 /* Firm type of methods implementing forth words */
 ir_type *word_method_type = 0;
 
@@ -244,7 +249,11 @@ void codegen(struct dict *entry) {
   add_irp_irg(pristine);
 
   /* Avoid repeated code generation for the entity */
-  set_entity_linkage(dictionary->entity, IR_LINKAGE_NO_CODEGEN);
+  foreach_irp_irg(i, old_irg) {
+    ir_entity *ent = get_irg_entity(old_irg);
+    if (IR_LINKAGE_NO_CODEGEN != get_entity_linkage(ent))
+      set_entity_linkage(ent, IR_LINKAGE_NO_CODEGEN);
+  }
 }
 
 /* End compilation of a word */
@@ -733,11 +742,6 @@ static void initialize_firm()
     set_entity_linkage(entity, IR_LINKAGE_NO_CODEGEN);
     entry->entity = entity;
   }
-
-#define foreach_irp_irg(idx, irg) \
-	for (bool irg##__b = true; irg##__b; irg##__b = false) \
-		for (size_t idx = 0, irg##__n = get_irp_n_irgs(); irg##__b && idx != irg##__n; ++idx) \
-			for (ir_graph *const irg = (irg##__b = false, get_irp_irg(idx)); !irg##__b; irg##__b = true)
 
   /* Do not generate Code for the imported IR */
   foreach_irp_irg(i, old_irg) {
