@@ -703,6 +703,32 @@ struct dict repeat_entry =
   .next = &again_entry
 };
 
+/* Finalize conditional loop construction */
+/* ( bb_head -- ) */
+cell *until(cell *sp)
+{
+  CROAK_UNLESS_COMPILING();
+  sp = w_if(sp);
+  /* (bb_head bb_false) */
+  ir_node *bb_true = get_cur_block();
+
+  ir_node *bb_false = sp[-1].a;
+  set_cur_block(bb_false);
+
+  sp[-1].a = bb_true;
+  /* (bb_head bb_true) */
+
+  return sp = repeat(sp);
+}
+
+struct dict until_entry =
+{
+  .name = "until",
+  .immediate = 1,
+  .code = until,
+  .next = &repeat_entry
+};
+
 static void compile(struct dict *entry)
 {
   ir_node *mem = get_store();
@@ -717,7 +743,7 @@ static void compile(struct dict *entry)
   set_value(0, ir_sp);
 }
 
-struct dict *dictionary = &repeat_entry;
+struct dict *dictionary = &until_entry;
 
 static ir_entity *find_global_entity(const char *name)
 {
