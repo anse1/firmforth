@@ -511,7 +511,7 @@ struct dict store_entry =
    projected from the true condition is made the current one.  The
    basic block for the false condition is pushed on the stack as
    well. */
-cell* w_if(cell *sp) /* -- bb_cond bb_false */
+cell* w_if(cell *sp) /* -- bb_false */
 {
   CROAK_UNLESS_COMPILING();
 
@@ -541,10 +541,7 @@ cell* w_if(cell *sp) /* -- bb_cond bb_false */
   ir_node *block_false = new_immBlock();
   add_immBlock_pred(block_false, proj_false);
 
-  /* May not mature the current block yet because repeat might add a
-     backedge to it if we are in a "loop header" */
-  sp->a = get_cur_block();
-  sp++;
+  mature_immBlock(get_cur_block());
 
   set_cur_block(block_true);
 
@@ -600,7 +597,7 @@ struct dict else_entry =
 
 /* Finalize current basic block as well as the condition block and
    make the one on the stack the current one. */
-/* ( bb_cond bb_then -- ) */
+/* ( bb_then -- ) */
 cell* w_then(cell *sp)
 {
   CROAK_UNLESS_COMPILING();
@@ -609,10 +606,6 @@ cell* w_then(cell *sp)
   ir_node *jump = new_Jmp();
   mature_immBlock(get_cur_block());
   add_immBlock_pred(bb_then, jump);
-
-  sp--;
-  ir_node *bb_cond = sp->a;
-  mature_immBlock(bb_cond);
 
   set_cur_block(bb_then);
   return sp;
@@ -638,6 +631,11 @@ cell *begin(cell *sp)
   sp++;
   set_cur_block(bb_head);
   add_immBlock_pred(bb_head, jump);
+
+  ir_node *body = new_immBlock();
+  add_immBlock_pred(body, new_Jmp());
+  set_cur_block(body);
+
   return sp;
 }
 
