@@ -649,7 +649,36 @@ struct dict begin_entry =
   .next = &then_entry
 };
 
-/* Finalize loop construction */
+/* Finalize unconditional loop construction */
+/* ( bb_head -- ) */
+cell *again(cell *sp)
+{
+  CROAK_UNLESS_COMPILING();
+  sp--;
+  ir_node *bb_head = sp->a;
+  ir_node *jump = new_Jmp();
+  add_immBlock_pred(bb_head, jump);
+
+  /* force a PhiM to be created */
+  get_store();
+  /* connect loop with End node */
+  keep_alive(bb_head);
+
+  mature_immBlock(bb_head);
+
+  set_cur_block(new_immBlock());
+  return sp;
+}
+
+struct dict again_entry =
+{
+  .name = "again",
+  .immediate = 1,
+  .code = again,
+  .next = &begin_entry
+};
+
+/* Finalize conditional loop construction */
 /* ( bb_head bb_then -- ) */
 cell *repeat(cell *sp)
 {
@@ -673,7 +702,7 @@ struct dict repeat_entry =
   .name = "repeat",
   .immediate = 1,
   .code = repeat,
-  .next = &begin_entry
+  .next = &again_entry
 };
 
 static void compile(struct dict *entry)
