@@ -25,11 +25,11 @@
 : - negate + ;
 : 1- -1 + ;
 
-: < ( x1 x2 -- flag )
-	1- > negate ;
+: 0= ( x1 -- flag )
+	if 0 else 1 then ;
 
-\ : drop ( a -- )
-\   sp@ 1 cells - sp! ;
+: < ( x1 x2 -- flag )
+	1- > 0= ;
 
 : 2drop ( a b -- )
   drop drop ;
@@ -45,9 +45,6 @@
 
 : 2dup ( x1 x2 -- x1 x2 x1 x2 )
   over over ;
-
-: 0= ( x1 -- flag )
-	if 0 else 1 then ;
 
 : *' ( n1 n2 n3 -- n1 0 n2*n3 )
 	over if
