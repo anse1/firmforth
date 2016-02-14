@@ -307,7 +307,7 @@ cell* semicolon(cell *sp)
 
   dump_ir_graph(irg, "optimized");
 
-/*   codegen(dictionary); */
+  codegen(dictionary);
 
   return sp;
 }
