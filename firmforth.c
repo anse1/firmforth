@@ -44,6 +44,11 @@ int compiling = 0;
 		for (size_t idx = 0, irg##__n = get_irp_n_irgs(); irg##__b && idx != irg##__n; ++idx) \
 			for (ir_graph *const irg = (irg##__b = false, get_irp_irg(idx)); !irg##__b; irg##__b = true)
 
+#define foreach_compound_member(idx, mem, type)		       \
+	for (bool mem##__b = true; mem##__b; mem##__b = false) \
+		for (size_t idx = 0, mem##__n = get_compound_n_members(type); mem##__b && idx != mem##__n; ++idx) \
+			for (ir_entity *const mem = (mem##__b = false, get_compound_member(type, idx)); !mem##__b; mem##__b = true)
+
 /* Firm type of methods implementing forth words */
 ir_type *word_method_type = 0;
 
@@ -202,6 +207,7 @@ static void after_inline_opt(ir_graph *irg)
   scalar_replacement_opt(irg);
   optimize_graph_df(irg);
   optimize_cf(irg);
+  optimize_load_store(irg);
   combo(irg);
 }
 
@@ -251,9 +257,13 @@ void codegen(struct dict *entry) {
   /* Avoid repeated code generation for the entity */
   foreach_irp_irg(i, old_irg) {
     ir_entity *ent = get_irg_entity(old_irg);
-    if (IR_LINKAGE_NO_CODEGEN != get_entity_linkage(ent))
-      set_entity_linkage(ent, IR_LINKAGE_NO_CODEGEN);
+    set_entity_linkage(ent, IR_LINKAGE_NO_CODEGEN);
   }
+
+  foreach_compound_member(i, mem, get_glob_type()) {
+    set_entity_linkage(mem, IR_LINKAGE_NO_CODEGEN);
+  }
+
 }
 
 /* End compilation of a word */
