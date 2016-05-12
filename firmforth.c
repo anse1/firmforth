@@ -31,6 +31,7 @@ ir_type *type_cell_ptr;
    new word being defined. */
 int compiling = 0;
 
+/* Check stack for over/underflow */
 #define ASSERT_STACK() \
   do { assert(sp >= data_stack); \
     assert(sp < (data_stack + sizeof(data_stack)));	\
@@ -819,16 +820,21 @@ cell* interpret(cell *sp)
  retry:
   token = next();
 
+  /* Skip comments */
   if (!strcmp(token, "(")) {
     do {
       token = next();
     } while (strcmp(token, ")"));
     goto retry;
   }
+
+  /* Search dictionary */
   while (entry && strcmp(entry->name, token)) {
     entry = entry->next;
   }
+
   if (entry) {
+    /* Word found in dictionary, execute or compile a call to it */
     ASSERT_STACK();
     if (compiling && !entry->immediate)
       compile(entry);
@@ -843,6 +849,7 @@ cell* interpret(cell *sp)
     }
     ASSERT_STACK();
   } else if ((token[0] >= '0' && token[0] <= '9') || token[0] == '-') {
+    /* Integer found, put it on the stack */
     if (compiling) {
       fprintf(stderr, "ERROR: NIY\n");
     } else {
