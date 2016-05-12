@@ -514,10 +514,9 @@ struct dict store_entry =
 
 /* Construct IR to fetch a value from the stack and fork control flow.
    Two new basic blocks are created.  The current basic block is
-   pushed on the stack for future maturing.  The basic block
-   projected from the true condition is made the current one.  The
-   basic block for the false condition is pushed on the stack as
-   well. */
+   matured.  The basic block projected from the true condition is made
+   the current one.  The basic block for the false condition is pushed
+   on the stack. */
 cell* w_if(cell *sp) /* -- bb_false */
 {
   /* IR to load value at top of stack sp[-1] */
