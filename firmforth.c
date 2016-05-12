@@ -563,7 +563,7 @@ struct dict if_entry =
   .next = &store_entry,
 };
 
-/* also implements while word */
+/* also implements WHILE */
 struct dict while_entry =
 {
   .name = "while",
@@ -620,7 +620,7 @@ struct dict then_entry =
   .next = &else_entry,
 };
 
-/* Begin loop construction */
+/* BEGIN loop construction */
 /* -- bb_head */
 cell *begin(cell *sp)
 {
