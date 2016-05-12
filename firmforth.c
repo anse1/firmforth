@@ -742,8 +742,15 @@ struct dict until_entry =
 static void compile(struct dict *entry)
 {
   ir_node *mem = get_store();
-/*   ir_node *ptr = new_Const_long(mode_P, (long)(entry->code)); */
-  ir_node *ptr = new_Address(entry->entity);
+  ir_node *ptr;
+
+  if (entry->entity) {
+    ptr = new_Address(entry->entity);
+  } else {
+    assert(entry->code);
+    ptr = new_Const_long(mode_P, (long)(entry->code));
+  }
+
   ir_node *ir_sp = get_value(0, mode_P);
   ir_node *call = new_Call(mem, ptr, 1, &ir_sp, word_method_type);
   mem = new_Proj(call, mode_M, pn_Call_M);
