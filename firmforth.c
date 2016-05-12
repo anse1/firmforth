@@ -36,9 +36,6 @@ int compiling = 0;
     assert(sp < (data_stack + sizeof(data_stack)));	\
   } while (0)
 
-#define CROAK_UNLESS_COMPILING() \
-  do {if (!compiling) {fprintf(stderr, "ERROR: not in compilation mode\n");return sp;}} while (0)
-
 #define foreach_irp_irg(idx, irg) \
 	for (bool irg##__b = true; irg##__b; irg##__b = false) \
 		for (size_t idx = 0, irg##__n = get_irp_n_irgs(); irg##__b && idx != irg##__n; ++idx) \
@@ -269,7 +266,6 @@ void codegen(struct dict *entry) {
 /* End compilation of a word */
 cell* semicolon(cell *sp)
 {
-  CROAK_UNLESS_COMPILING();
   ASSERT_STACK();
 
   compiling = 0;
@@ -523,8 +519,6 @@ struct dict store_entry =
    well. */
 cell* w_if(cell *sp) /* -- bb_false */
 {
-  CROAK_UNLESS_COMPILING();
-
   /* IR to load value at top of stack sp[-1] */
   ir_node *offset = new_Const_long(mode_Ls, -sizeof(union cell));
   ir_node *ir_sp = get_value(0, mode_P);
@@ -583,8 +577,6 @@ struct dict while_entry =
    the true/false blocks onto the stack. */
 cell* w_else(cell *sp) /* bb_false -- bb_then */
 {
-  CROAK_UNLESS_COMPILING();
-
   ir_node *bb_false = sp[-1].a;
 
   ir_node *jump = new_Jmp();
@@ -610,7 +602,6 @@ struct dict else_entry =
 /* ( bb_then -- ) */
 cell* w_then(cell *sp)
 {
-  CROAK_UNLESS_COMPILING();
   sp--;
   ir_node *bb_then = sp->a;
   ir_node *jump = new_Jmp();
@@ -661,7 +652,6 @@ struct dict begin_entry =
 /* ( bb_head -- ) */
 cell *again(cell *sp)
 {
-  CROAK_UNLESS_COMPILING();
   sp--;
   ir_node *bb_head = sp->a;
   ir_node *jump = new_Jmp();
@@ -690,7 +680,6 @@ struct dict again_entry =
 /* ( bb_head bb_then -- ) */
 cell *repeat(cell *sp)
 {
-  CROAK_UNLESS_COMPILING();
   sp--;
   ir_node *bb_then = sp->a;
   ir_node *jump = new_Jmp();
@@ -717,7 +706,6 @@ struct dict repeat_entry =
 /* ( bb_head -- ) */
 cell *until(cell *sp)
 {
-  CROAK_UNLESS_COMPILING();
   sp = w_if(sp);
   /* (bb_head bb_false) */
   ir_node *bb_true = get_cur_block();
@@ -845,6 +833,10 @@ cell* interpret(cell *sp)
     if (compiling && !entry->immediate)
       compile(entry);
     else {
+      if (!compiling && entry->immediate) {
+	fprintf(stderr, "ERROR: immediate words are only allowed in compilation mode\n");
+	return sp;
+      }
       if (!entry->code)
 	codegen(entry);
       sp = entry->code(sp);
