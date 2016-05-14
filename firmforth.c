@@ -258,9 +258,12 @@ void codegen(struct dict *entry) {
     set_entity_linkage(ent, IR_LINKAGE_NO_CODEGEN);
   }
 
-  foreach_compound_member(i, mem, get_glob_type()) {
-    set_entity_linkage(mem, IR_LINKAGE_NO_CODEGEN);
-  }
+  /* TODO: This includes static data, need to find a better way.
+     Repeatedly emit global entites for every word for now.  */
+/*   foreach_compound_member(i, mem, get_glob_type()) { */
+/*     set_entity_linkage(mem, IR_LINKAGE_NO_CODEGEN); */
+/*     set_entity_visibility(mem, ir_visibility_external); */
+/*   } */
 
 }
 
