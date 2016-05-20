@@ -157,7 +157,7 @@ cell* colon(cell *sp)
   /* Create valid linker symbol */
   ident *id;
   {
-    char *mangled = mangle("word_%03d_", entry->name, "");
+    char *mangled = mangle("word_", entry->name, "");
     id = id_unique(mangled);
     free(mangled);
   }
