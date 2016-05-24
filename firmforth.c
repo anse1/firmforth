@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <signal.h>
 #include <assert.h>
 #include <dlfcn.h>
 
@@ -231,10 +232,17 @@ void codegen(struct dict *entry) {
   /* Assemble shared object */
   char filename_so[64];
   snprintf(filename_so, sizeof(filename_so), "./jit-%s.so", entry->ldname);
-  char command[128];
-  snprintf(command, sizeof(command), LINK_COMMAND,
-	   filename_so, filename_s);
-  system(command);
+
+  {
+    char command[128];
+    snprintf(command, sizeof(command), LINK_COMMAND,
+	     filename_so, filename_s);
+    int rc = system(command);
+    if (!WIFEXITED(rc) || WEXITSTATUS(rc)) {
+      fprintf(stderr, "assembler/linker command failed: %s\n", command);
+      exit(-1);
+    }
+  }
 
   /* dlopen() the shared object */
   void *dlhandle = dlopen(filename_so, RTLD_NOW|RTLD_GLOBAL);
