@@ -55,6 +55,7 @@ machine for various forth systems.
 | firmforth 0e1784f              |        0.35 |        0.15 |
 | GNU Gforth 0.7.2 (gforth-fast) |        0.00 |        0.39 |
 | stubforth 5745163              |        0.00 |        0.83 |
+| non-optimizing firmforth       |        0.35 |        2.67 |
 
 ** Authors
 
