@@ -23,6 +23,8 @@ is in turn loaded into the program using dlopen() and the word is
 added to the dictionary.  The IR is also kept around for future
 inlining of the word.
 
+[[file:firmforth.png]]
+
 ** Usage
 
 A couple of standard forth words are written in forth itself in the
