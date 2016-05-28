@@ -860,7 +860,7 @@ cell* interpret(cell *sp)
   } else if ((token[0] >= '0' && token[0] <= '9') || token[0] == '-') {
     /* Integer found, put it on the stack */
     if (compiling) {
-      fprintf(stderr, "ERROR: NIY\n");
+      fprintf(stderr, "NIY: Compilation of arbitrary numbers\n");
     } else {
       sp->i = atoll(token);
       sp++;
