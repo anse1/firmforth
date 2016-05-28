@@ -43,7 +43,9 @@ build/%.o: %.c
 	@echo '===> CC $<'
 	$(Q)$(CC) $(CFLAGS) -c $< -o $@
 
-clean:
+clean: jit-clean
 	@echo '===> CLEAN'
 	$(Q)rm -rf build $(GOAL) .depend
-	$(Q)rm -rf jit-word_*.so word_*.vcg jit-word_*.s 
+
+jit-clean:
+	rm -rf jit-*.s jit-*.so jit-*.vcg word_*.vcg
