@@ -99,6 +99,23 @@ struct dict add_entry = {
   .ldname = "add"
 };
 
+/* Floored division */
+cell* divide(cell *sp)
+{
+  sp--;
+  sp[-1].i = (((sp[-1].i < 0) != (sp[0].i < 0))?
+             (((sp[-1].i + 1) / sp[0].i) - 1):
+             ((sp[-1].i) / (sp[0].i)));
+  return sp;
+}
+
+struct dict divide_entry = {
+  .name = "/",
+  .code = divide,
+  .next = &add_entry,
+  .ldname = "divide"
+};
+
 cell* greater_than(cell *sp)
 {
   sp -= 1;
@@ -110,7 +127,7 @@ struct dict greater_than_entry =
 {
   .name = ">",
   .code = greater_than,
-  .next = &add_entry,
+  .next = &divide_entry,
   .ldname = "greater_than"
 };
 
