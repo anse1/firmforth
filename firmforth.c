@@ -766,6 +766,14 @@ struct dict until_entry =
   .next = &repeat_entry
 };
 
+struct dict lshift_entry = {
+  .name = "LSHIFT",
+  .code = 0,
+  .immediate = 0,
+  .next = &until_entry,
+  .ldname = "lshift"
+};
+
 static void compile(struct dict *entry)
 {
   ir_node *mem = get_store();
@@ -787,7 +795,7 @@ static void compile(struct dict *entry)
   set_value(0, ir_sp);
 }
 
-struct dict *dictionary = &until_entry;
+struct dict *dictionary = &lshift_entry;
 
 static ir_entity *find_global_entity(const char *name)
 {
@@ -900,10 +908,59 @@ cell* interpret(cell *sp)
   return sp;
 }
 
+cell* init_lshift(cell *sp)
+{
+  ident *id;
+  {
+    char *mangled = mangle("word_", lshift_entry.name, "");
+    id = id_unique(mangled);
+    free(mangled);
+  }
+
+  /* Create Firm entity for word */
+  ir_type *global_type = get_glob_type();
+  lshift_entry.entity = new_entity(global_type, id, word_method_type);
+  set_entity_ld_ident(lshift_entry.entity, id);
+
+  lshift_entry.ldname = get_id_str(id);
+
+  /* Create IR graph */
+  ir_graph *irg = new_ir_graph(lshift_entry.entity, 1);
+  /* Sets graph which is currently constructed. */
+  set_current_ir_graph(irg);
+
+  ir_node *proj_arg_t = new_Proj(get_irg_start(irg), mode_T, pn_Start_T_args);
+
+  /* IR to load value at top-of-stack (TOS) sp[-1] */
+  ir_node *cell_size = new_Const_long(mode_Ls, sizeof(union cell));
+  ir_node *ir_sp = new_Proj(proj_arg_t, mode_P, 0);
+  ir_node *ir_sp_TOS = new_Sub(ir_sp, cell_size);
+  ir_node *load_data = new_Load(get_store(), ir_sp_TOS, mode_Lu, type_cell, 0);
+  ir_node *load_data_res_TOS = new_Proj(load_data, mode_Lu, pn_Load_res);
+  ir_node *load_data_mem_TOS = new_Proj(load_data, mode_M, pn_Load_M);
+
+  /* IR to load value at next-on-stack (NOS) sp[-2] */
+  ir_node *ir_sp_NOS = new_Sub(ir_sp_TOS, cell_size);
+  load_data = new_Load(load_data_mem_TOS, ir_sp_NOS, mode_Lu, type_cell, 0);
+  ir_node *load_data_res_NOS = new_Proj(load_data, mode_Lu, pn_Load_res);
+  ir_node *load_data_mem_NOS = new_Proj(load_data, mode_M, pn_Load_M);
+  set_store(load_data_mem_NOS);
+
+  ir_node *shl = new_Shl(load_data_res_TOS, load_data_res_NOS);
+
+  ir_node *store = new_Store(get_store(), ir_sp_NOS, shl, type_cell, 0);
+  ir_node* store_m = new_Proj(store, mode_M, pn_Store_M);
+  set_store(store_m);
+  set_value(0, ir_sp_TOS);
+
+  return semicolon(sp);
+}
+
 int main()
 {
   initialize_firm();
   cell *sp = data_stack;
+  sp = init_lshift(sp);
   while(1)
     sp = interpret(sp);
 }
