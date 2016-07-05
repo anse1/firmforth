@@ -65,3 +65,8 @@
 			swap 1 - fibonacci +
 		then
 	then ;
+
+: factorial ( n -- n! )
+    dup 1 >  if
+        dup 1-  factorial  *
+    then ;
