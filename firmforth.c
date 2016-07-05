@@ -532,7 +532,7 @@ cell* w_if(cell *sp) /* -- bb_false */
   /* IR to load value at top of stack sp[-1] */
   ir_node *offset = new_Const_long(mode_Ls, -sizeof(union cell));
   ir_node *ir_sp = get_value(0, mode_P);
-  ir_sp = new_Add(ir_sp, offset, mode_P);
+  ir_sp = new_Add(ir_sp, offset);
   set_value(0, ir_sp);
   ir_node *load_data = new_Load(get_store(), ir_sp, mode_Lu, type_cell, 0);
   ir_node *load_data_res = new_Proj(load_data, mode_Lu, pn_Load_res);
