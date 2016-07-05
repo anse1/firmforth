@@ -767,7 +767,7 @@ struct dict until_entry =
 };
 
 struct dict lshift_entry = {
-  .name = "LSHIFT",
+  .name = "lshift",
   .code = 0,
   .immediate = 0,
   .next = &until_entry,
