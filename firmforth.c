@@ -69,6 +69,18 @@ struct dict hi_entry = {
    .code = hi,
 };
 
+cell* bye(cell *sp)
+{
+  (void) sp;
+  exit(0);
+}
+
+struct dict bye_entry = {
+  .name = "bye",
+  .code = bye,
+  .next = &hi_entry
+};
+
 /* Definitions of standard forth words have no comments on them.  See
    ANSI X3.215-1994 for their definition. */
 cell* dot(cell *sp)
@@ -81,7 +93,7 @@ cell* dot(cell *sp)
 struct dict dot_entry = {
   .name = ".",
   .code = dot,
-  .next = &hi_entry,
+  .next = &bye_entry,
   .ldname = "dot"
 };
 
