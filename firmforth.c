@@ -197,11 +197,12 @@ cell* colon(cell *sp)
   set_entity_ld_ident(entry->entity, id);
 
   /* Create IR graph */
+  /* We use one local variable for the stack pointer */
   ir_graph *irg = new_ir_graph(entry->entity, 1);
   set_current_ir_graph(irg);
 
+  /* Put stack pointer argument into local variable 0 */
   ir_node *proj_arg_t = new_Proj(get_irg_start(irg), mode_T, pn_Start_T_args);
-  /* IR to load current forth data stack pointer */
   set_value(0, new_Proj(proj_arg_t, mode_P, 0));
 
   entry->ldname = get_id_str(id);
@@ -216,6 +217,8 @@ struct dict colon_entry =
   .ldname = "colon"
 };
 
+/* Create Return node.  Uses local variable 0 and get_store() to
+   retrieve the sp/memory to be returned */
 static void create_return(void)
 {
   ir_node   *mem         = get_store();
@@ -908,6 +911,7 @@ cell* interpret(cell *sp)
   return sp;
 }
 
+/* Define the word "lshift" using libfirm API */
 cell* init_lshift(cell *sp)
 {
   ident *id;
