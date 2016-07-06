@@ -950,7 +950,7 @@ cell* init_lshift(cell *sp)
   ir_node *load_data_mem_NOS = new_Proj(load_data, mode_M, pn_Load_M);
   set_store(load_data_mem_NOS);
 
-  ir_node *shl = new_Shl(load_data_res_TOS, load_data_res_NOS);
+  ir_node *shl = new_Shl(load_data_res_NOS, load_data_res_TOS);
 
   ir_node *store = new_Store(get_store(), ir_sp_NOS, shl, type_cell, 0);
   ir_node* store_m = new_Proj(store, mode_M, pn_Store_M);
