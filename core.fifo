@@ -68,4 +68,3 @@
         dup 1-  factorial  *
     then ;
 
-35 fibonacci .
