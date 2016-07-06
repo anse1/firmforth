@@ -35,10 +35,7 @@
   drop drop ;
 
 : dup ( a -- a a )
-  sp@ -1 cells + @ ;
-
-: pick ( xu ... x1 x0 u -- xu ... x1 x0 xu )
-  2 + cells sp@ swap - @ ;
+  0 pick ;
 
 : over ( x1 x2 -- x1 x2 x1 )
 	1 pick ;
@@ -70,3 +67,5 @@
     dup 1 >  if
         dup 1-  factorial  *
     then ;
+
+35 fibonacci .

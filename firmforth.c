@@ -427,6 +427,19 @@ struct dict sp_store_entry =
   .ldname = "sp_store"
 };
 
+cell* pick(cell *sp)
+{
+  sp[-1] = sp[-sp[-1].i - 2];
+  return sp;
+}
+
+struct dict sp_pick_entry =
+{
+  .name = "pick",
+  .code = pick,
+  .next = &sp_store_entry,
+};
+
 cell* cells(cell *sp)
 {
   sp[-1].i = sizeof(union cell) * sp[-1].i;
@@ -437,7 +450,7 @@ struct dict cells_entry =
 {
   .name = "cells",
   .code = cells,
-  .next = &sp_store_entry,
+  .next = &sp_pick_entry,
 };
 
 cell *swap(cell *sp)
