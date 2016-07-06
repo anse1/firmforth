@@ -769,14 +769,6 @@ struct dict until_entry =
   .next = &repeat_entry
 };
 
-struct dict lshift_entry = {
-  .name = "lshift",
-  .code = 0,
-  .immediate = 0,
-  .next = &until_entry,
-  .ldname = "lshift"
-};
-
 static void compile(struct dict *entry)
 {
   ir_node *mem = get_store();
@@ -798,7 +790,7 @@ static void compile(struct dict *entry)
   set_value(0, ir_sp);
 }
 
-struct dict *dictionary = &lshift_entry;
+struct dict *dictionary = &until_entry;
 
 static ir_entity *find_global_entity(const char *name)
 {
@@ -911,25 +903,33 @@ cell* interpret(cell *sp)
   return sp;
 }
 
-/* Define the word "lshift" using libfirm API */
-cell* init_lshift(cell *sp)
+/* Define a word for a Firm binary operator */
+cell* init_binop(cell *sp, const char *name, ir_node *(*constructor)(ir_node *, ir_node *) )
 {
+  /* create dictionary entry */
+  struct dict *entry = malloc(sizeof(struct dict));
+  entry->name = name;
+  entry->code = 0;
+  entry->immediate = 0;
+  entry->next = dictionary;
+  dictionary = entry;
+
   ident *id;
   {
-    char *mangled = mangle("word_", lshift_entry.name, "");
+    char *mangled = mangle("word_", name, "");
     id = id_unique(mangled);
     free(mangled);
   }
 
   /* Create Firm entity for word */
   ir_type *global_type = get_glob_type();
-  lshift_entry.entity = new_entity(global_type, id, word_method_type);
-  set_entity_ld_ident(lshift_entry.entity, id);
+  entry->entity = new_entity(global_type, id, word_method_type);
+  set_entity_ld_ident(entry->entity, id);
 
-  lshift_entry.ldname = get_id_str(id);
+  entry->ldname = get_id_str(id);
 
   /* Create IR graph */
-  ir_graph *irg = new_ir_graph(lshift_entry.entity, 1);
+  ir_graph *irg = new_ir_graph(entry->entity, 1);
   /* Sets graph which is currently constructed. */
   set_current_ir_graph(irg);
 
@@ -950,9 +950,9 @@ cell* init_lshift(cell *sp)
   ir_node *load_data_mem_NOS = new_Proj(load_data, mode_M, pn_Load_M);
   set_store(load_data_mem_NOS);
 
-  ir_node *shl = new_Shl(load_data_res_NOS, load_data_res_TOS);
+  ir_node *binop = constructor(load_data_res_NOS, load_data_res_TOS);
 
-  ir_node *store = new_Store(get_store(), ir_sp_NOS, shl, type_cell, 0);
+  ir_node *store = new_Store(get_store(), ir_sp_NOS, binop, type_cell, 0);
   ir_node* store_m = new_Proj(store, mode_M, pn_Store_M);
   set_store(store_m);
   set_value(0, ir_sp_TOS);
@@ -964,7 +964,12 @@ int main()
 {
   initialize_firm();
   cell *sp = data_stack;
-  sp = init_lshift(sp);
+  sp = init_binop(sp, "lshift", new_Shl);
+  sp = init_binop(sp, "rshift", new_Shr);
+  sp = init_binop(sp, "or", new_Or);
+  sp = init_binop(sp, "and", new_And);
+  sp = init_binop(sp, "xor", new_Eor);
+  assert(sp == data_stack);
   while(1)
     sp = interpret(sp);
 }
