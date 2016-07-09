@@ -1,3 +1,8 @@
 jit-word*
 word_*
 gitrev.h
+*.ir
+firmforth
+build/
+.depend
+config.mak
