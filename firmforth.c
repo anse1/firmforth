@@ -825,7 +825,7 @@ static void initialize_firm()
   /* initialize backend early */
   int res = be_parse_arg("isa=amd64");
   res |= be_parse_arg("pic=elf");
-  be_get_backend_param();
+  be_get_backend_param(); /* calls initialize_isa() */
   assert(res != 0);
 
   /* create types */
