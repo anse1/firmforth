@@ -641,6 +641,7 @@ struct dict else_entry =
   .name = "else",
   .immediate = 1,
   .code = w_else,
+  .ldname = "w_else",
   .next = &if_entry,
 };
 
@@ -664,6 +665,7 @@ struct dict then_entry =
   .name = "then",
   .immediate = 1,
   .code = w_then,
+  .ldname = "w_then",
   .next = &else_entry,
 };
 
