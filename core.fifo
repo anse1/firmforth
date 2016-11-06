@@ -43,16 +43,6 @@
 : 2dup ( x1 x2 -- x1 x2 x1 x2 )
   over over ;
 
-: *' ( n1 n2 n3 -- n1 0 n2*n3 )
-	over if
-		2 pick +
-		swap 1-
-		swap *'
-	then ;
-
-: * ( n1 n2 -- n1*n2 )
-	0 *' swap drop swap drop ;
-
 : fibonacci
 	dup 0= if
 	else

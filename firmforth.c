@@ -982,6 +982,7 @@ int main()
   sp = init_binop(sp, "or", new_Or);
   sp = init_binop(sp, "and", new_And);
   sp = init_binop(sp, "xor", new_Eor);
+  sp = init_binop(sp, "*", new_Mul);
   assert(sp == data_stack);
   while(1)
     sp = interpret(sp);
