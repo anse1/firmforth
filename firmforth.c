@@ -829,7 +829,7 @@ static void initialize_firm()
   assert(res != 0);
 
   /* create types */
-  word_method_type = new_type_method(1, 1, false);
+  word_method_type = new_type_method(1, 1, false, 0, 0);
   type_cell = new_type_primitive(mode_Ls);
   type_cell_ptr = new_type_pointer(type_cell);
   set_method_res_type(word_method_type, 0, type_cell_ptr);
