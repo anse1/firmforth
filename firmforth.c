@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <strings.h>
 #include <stdlib.h>
 #include <assert.h>
 #include <dlfcn.h>
@@ -802,7 +803,7 @@ cell *postpone(cell *sp)
      const char *token = next();
      /* Search dictionary */
      struct dict *entry = dictionary;
-     while (entry && strcmp(entry->name, token)) {
+     while (entry && strcasecmp(entry->name, token)) {
 	  entry = entry->next;
      }
      if (!entry) {
@@ -915,7 +916,7 @@ cell* interpret(cell *sp)
   }
 
   /* Search dictionary */
-  while (entry && strcmp(entry->name, token)) {
+  while (entry && strcasecmp(entry->name, token)) {
     entry = entry->next;
   }
 
