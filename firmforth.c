@@ -615,16 +615,8 @@ struct dict if_entry =
   .name = "if",
   .immediate = 1,
   .code = w_if,
+  .ldname = "w_if",
   .next = &store_entry,
-};
-
-/* also implements WHILE */
-struct dict while_entry =
-{
-  .name = "while",
-  .immediate = 1,
-  .code = w_if,
-  .next = &if_entry,
 };
 
 /* Mature the basic block under construction and switch construction
@@ -649,7 +641,7 @@ struct dict else_entry =
   .name = "else",
   .immediate = 1,
   .code = w_else,
-  .next = &while_entry,
+  .next = &if_entry,
 };
 
 /* Finalize current basic block as well as the condition block and

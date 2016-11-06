@@ -43,6 +43,8 @@
 : 2dup ( x1 x2 -- x1 x2 x1 x2 )
   over over ;
 
+: while postpone if ; immediate
+
 : fibonacci
 	dup 0= if
 	else
