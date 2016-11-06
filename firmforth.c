@@ -219,7 +219,7 @@ struct dict colon_entry =
 
 /* Create Return node.  Uses local variable 0 and get_store() to
    retrieve the sp/memory to be returned */
-static void create_return(void)
+void create_return(void)
 {
   ir_node   *mem         = get_store();
   ir_node *ir_sp = get_value(0, mode_P);
@@ -232,7 +232,7 @@ static void create_return(void)
   set_cur_block(NULL);
 }
 
-static void after_inline_opt(ir_graph *irg)
+void after_inline_opt(ir_graph *irg)
 {
   scalar_replacement_opt(irg);
   optimize_graph_df(irg);
@@ -803,7 +803,45 @@ static void compile(struct dict *entry)
   set_value(0, ir_sp);
 }
 
-struct dict *dictionary = &until_entry;
+cell *postpone(cell *sp)
+{
+     const char *token = next();
+     /* Search dictionary */
+     struct dict *entry = dictionary;
+     while (entry && strcmp(entry->name, token)) {
+	  entry = entry->next;
+     }
+     if (!entry) {
+	  fprintf(stderr, "ERROR: unknown word\n");
+     } else {
+	  compile(entry);
+     }
+     return sp;
+}
+
+struct dict postpone_entry =
+{
+     .name = "postpone",
+     .immediate = 1,
+     .code = postpone,
+     .next = &until_entry
+};
+
+cell *immediate(cell *sp)
+{
+     dictionary->immediate = 1;
+     return sp;
+}
+
+struct dict immediate_entry =
+{
+     .name = "immediate",
+     .code = immediate,
+     .next = &postpone_entry
+};
+
+struct dict *dictionary = &immediate_entry;
+
 
 static ir_entity *find_global_entity(const char *name)
 {
