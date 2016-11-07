@@ -881,8 +881,56 @@ struct dict rload_entry =
      .next = &rfrom_entry
 };
 
+/* Compile code to put a Const on the stack */
+cell *w_tarval(cell *sp)
+{
+     ir_node *ir_sp = get_value(0, mode_P);
+     ir_node *constnode = new_Const_long(mode_Lu, sp[-1].u);
+     sp--;
+     ir_node *store = new_Store(get_store(), ir_sp, constnode, type_cell, 0);
+     ir_node *mem = new_Proj(store, mode_M, pn_Store_M);
+     set_store(mem);
+     ir_node *add = new_Add(ir_sp, new_Const_long(mode_Ls, sizeof(union cell)));
+     set_value(0, add);
+     return sp;
+}
 
-struct dict *dictionary = &rload_entry;
+struct dict w_tarval_entry = {
+     .name = "tarval",
+     .code = w_tarval,
+     .ldname = "w_tarval",
+     .immediate = 1,
+     .next = &rload_entry
+};
+
+cell *w_brkleft(cell *sp)
+{
+     compiling = 0;
+     return sp;
+}
+
+struct dict w_brkleft_entry = {
+     .name = "[",
+     .ldname = "w_brkleft",
+     .code = w_brkleft,
+     .immediate = 1,
+     .next = &w_tarval_entry,
+};
+
+cell *w_brkright(cell *sp)
+{
+     compiling = 1;
+     return sp;
+}
+
+struct dict w_brkright_entry = {
+     .name = "]",
+     .ldname = "w_brkright",
+     .code = w_brkright,
+     .next = &w_brkleft_entry,
+};
+
+struct dict *dictionary = &w_brkright_entry;
 
 
 static ir_entity *find_global_entity(const char *name)
