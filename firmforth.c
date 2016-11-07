@@ -19,6 +19,10 @@
 /* Forth data stack */
 union cell data_stack[1<<20];
 
+/* Forth (pseudo) return stack */
+union cell return_stack[1<<20];
+union cell *rp = return_stack;
+
 /* Firm type for elements of the data stack */
 ir_type *type_cell;
 
@@ -835,7 +839,50 @@ struct dict immediate_entry =
      .next = &postpone_entry
 };
 
-struct dict *dictionary = &immediate_entry;
+cell *tor(cell *sp)
+{
+     *rp++ = *--sp;
+     return sp;
+}
+
+struct dict tor_entry =
+{
+     .name = ">r",
+     .ldname = "tor",
+     .code = tor,
+     .next = &immediate_entry
+};
+
+cell *rfrom(cell *sp)
+{
+     *sp++ = *--rp;
+     return sp;
+}
+
+struct dict rfrom_entry =
+{
+     .name = "r>",
+     .ldname = "rfrom",
+     .code = rfrom,
+     .next = &tor_entry
+};
+
+cell *rload(cell *sp)
+{
+     *sp++ = rp[-1];
+     return sp;
+}
+
+struct dict rload_entry =
+{
+     .name = "r@",
+     .ldname = "rload",
+     .code = rload,
+     .next = &rfrom_entry
+};
+
+
+struct dict *dictionary = &rload_entry;
 
 
 static ir_entity *find_global_entity(const char *name)

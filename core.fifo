@@ -43,7 +43,17 @@
 : 2dup ( x1 x2 -- x1 x2 x1 x2 )
   over over ;
 
+: 2over ( x1 x2 x3 x4 -- x1 x2 x3 x4 x1 x2 )
+  3 pick 3 pick ;
+  
 : while postpone if ; immediate
+
+: ?dup dup if dup then ;
+
+: 2* 1 lshift ;
+: 2/ 1 rshift ;
+
+\ Various example programs
 
 : fibonacci
 	dup 0= if
