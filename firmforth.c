@@ -41,8 +41,11 @@ int compiling = 0;
 
 /* Check stack for over/underflow */
 #define ASSERT_STACK() \
-  do { assert(sp >= data_stack); \
+  do { \
+    assert(sp >= data_stack);				\
     assert(sp < (data_stack + sizeof(data_stack)));	\
+    assert(cs >= control_stack);				\
+    assert(cs < (control_stack + sizeof(control_stack)));	\
   } while (0)
 
 #define foreach_irp_irg(idx, irg) \
@@ -779,7 +782,7 @@ struct dict until_entry =
   .next = &repeat_entry
 };
 
-static void compile(struct dict *entry)
+void compile(struct dict *entry)
 {
   ir_node *mem = get_store();
   ir_node *ptr;
@@ -809,7 +812,7 @@ cell *postpone(cell *sp)
 	  entry = entry->next;
      }
      if (!entry) {
-	  fprintf(stderr, "ERROR: unknown word\n");
+	  fprintf(stderr, "ERROR: unknown word: %s\n", token);
      } else {
 	  compile(entry);
      }
@@ -944,7 +947,22 @@ struct dict allocate_entry = {
      .next = &w_brkright_entry
 };
 
-struct dict *dictionary = &allocate_entry;
+cell *rot(cell *sp)
+{
+     cell tmp = sp[-1];
+     sp[-1] = sp[-3];
+     sp[-3] = sp[-2];
+     sp[-2] = tmp;
+     return sp;
+}
+
+struct dict rot_entry = {
+     .name = "rot",
+     .code = rot,
+     .next = &allocate_entry
+};
+
+struct dict *dictionary = &rot_entry;
 
 static ir_entity *find_global_entity(const char *name)
 {
@@ -1052,7 +1070,7 @@ cell* interpret(cell *sp)
       sp++;
     }
   } else {
-    fprintf(stderr, "ERROR: unknown word\n");
+     fprintf(stderr, "ERROR: unknown word: %s\n", token);
   }
   return sp;
 }
