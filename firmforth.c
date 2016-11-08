@@ -370,6 +370,9 @@ cell* semicolon(cell *sp)
 
   codegen(dictionary);
 
+  /* Make sure there's no control flow still unwired. */
+  assert (cs == control_stack);
+
   return sp;
 }
 
