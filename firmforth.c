@@ -23,6 +23,9 @@ union cell data_stack[1<<20];
 union cell return_stack[1<<20];
 union cell *rp = return_stack;
 
+ir_node *control_stack[1<<10];
+ir_node **cs = control_stack;
+
 /* Firm type for elements of the data stack */
 ir_type *type_cell;
 
@@ -150,7 +153,8 @@ struct dict greater_than_entry =
 
 /* Fetch a whitespace-delimited string from stdin, skipping # and
    \-comments */
-static const char *next() {
+__attribute__((noinline))
+const char *next() {
   static char *line;
   static size_t n;
   const char *token = 0;
@@ -577,7 +581,7 @@ struct dict store_entry =
    matured.  The basic block projected from the true condition is made
    the current one.  The basic block for the false condition is pushed
    on the stack. */
-cell* w_if(cell *sp) /* -- bb_false */
+cell* w_if(cell *sp) /* C: -- bb_false */
 {
   /* IR to load value at top of stack sp[-1] */
   ir_node *offset = new_Const_long(mode_Ls, -sizeof(union cell));
@@ -610,8 +614,7 @@ cell* w_if(cell *sp) /* -- bb_false */
   set_cur_block(block_true);
 
   /* Push false block on stack */
-  sp->a = block_false;
-  sp++;
+  *cs++ = block_false;
   return sp;
 }
 
@@ -629,7 +632,7 @@ struct dict if_entry =
    the true/false blocks onto the stack. */
 cell* w_else(cell *sp) /* bb_false -- bb_then */
 {
-  ir_node *bb_false = sp[-1].a;
+  ir_node *bb_false = *--cs;
 
   ir_node *jump = new_Jmp();
   ir_node *bb_then = new_immBlock();
@@ -637,7 +640,7 @@ cell* w_else(cell *sp) /* bb_false -- bb_then */
   mature_immBlock(get_cur_block());
   set_cur_block(bb_false);
 
-  sp[-1].a = bb_then;
+  *cs++ = bb_then;
   return sp;
 }
 
@@ -655,8 +658,7 @@ struct dict else_entry =
 /* ( bb_then -- ) */
 cell* w_then(cell *sp)
 {
-  sp--;
-  ir_node *bb_then = sp->a;
+  ir_node *bb_then = *--cs;
   ir_node *jump = new_Jmp();
   mature_immBlock(get_cur_block());
   add_immBlock_pred(bb_then, jump);
@@ -682,8 +684,7 @@ cell *begin(cell *sp)
   mature_immBlock(get_cur_block());
 
   ir_node *bb_head = new_immBlock();
-  sp->a = bb_head;
-  sp++;
+  *cs++ = bb_head;
   set_cur_block(bb_head);
   add_immBlock_pred(bb_head, jump);
 
@@ -706,8 +707,7 @@ struct dict begin_entry =
 /* ( bb_head -- ) */
 cell *again(cell *sp)
 {
-  sp--;
-  ir_node *bb_head = sp->a;
+  ir_node *bb_head = *--cs;
   ir_node *jump = new_Jmp();
   add_immBlock_pred(bb_head, jump);
 
@@ -734,13 +734,11 @@ struct dict again_entry =
 /* ( bb_head bb_then -- ) */
 cell *repeat(cell *sp)
 {
-  sp--;
-  ir_node *bb_then = sp->a;
+  ir_node *bb_then = *--cs;
   ir_node *jump = new_Jmp();
   mature_immBlock(get_cur_block());
 
-  sp--;
-  ir_node *bb_head = sp->a;
+  ir_node *bb_head = *--cs;
   add_immBlock_pred(bb_head, jump);
   mature_immBlock(bb_head);
 
@@ -764,10 +762,10 @@ cell *until(cell *sp)
   /* (bb_head bb_false) */
   ir_node *bb_true = get_cur_block();
 
-  ir_node *bb_false = sp[-1].a;
+  ir_node *bb_false = *--cs;
   set_cur_block(bb_false);
 
-  sp[-1].a = bb_true;
+  *cs++ = bb_true;
   /* (bb_head bb_true) */
 
   return sp = repeat(sp);
@@ -930,8 +928,23 @@ struct dict w_brkright_entry = {
      .next = &w_brkleft_entry,
 };
 
-struct dict *dictionary = &w_brkright_entry;
+/* ( u -- a-addr ior ) */
+cell *allocate(cell *sp)
+{
+     size_t sz = sp[-1].u;
+     sp[-1].a = malloc(sz);
+     assert(sp[-1].a);
+     sp[0].a = 0;
+     return ++sp;
+};
 
+struct dict allocate_entry = {
+     .name = "allocate",
+     .code = allocate,
+     .next = &w_brkright_entry
+};
+
+struct dict *dictionary = &allocate_entry;
 
 static ir_entity *find_global_entity(const char *name)
 {

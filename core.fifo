@@ -53,6 +53,19 @@
 : 2* 1 lshift ;
 : 2/ 1 rshift ;
 
+: constant
+  postpone :
+  postpone tarval
+  postpone ;
+;
+
+: variable
+  postpone :
+  [ 1 cells allocate drop ]
+  postpone tarval
+  postpone ;
+;
+
 \ Various example programs
 
 : fibonacci
