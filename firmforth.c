@@ -1063,12 +1063,10 @@ cell* interpret(cell *sp)
     ASSERT_STACK();
   } else if ((token[0] >= '0' && token[0] <= '9') || token[0] == '-') {
     /* Integer found, put it on the stack */
-    if (compiling) {
-      fprintf(stderr, "NIY: Compilation of arbitrary numbers\n");
-    } else {
-      sp->i = atoll(token);
-      sp++;
-    }
+     sp->i = atoll(token);
+     sp++;
+     if (compiling)
+       sp = w_tarval(sp);
   } else {
      fprintf(stderr, "ERROR: unknown word: %s\n", token);
   }
