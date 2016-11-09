@@ -430,7 +430,7 @@ struct dict sp_load_entry =
 cell* sp_store(cell *sp)
 {
   sp = sp[-1].a;
-  return sp;
+  return --sp;
 }
 
 struct dict sp_store_entry =
