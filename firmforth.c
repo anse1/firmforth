@@ -97,7 +97,7 @@ struct dict bye_entry = {
 cell* dot(cell *sp)
 {
   sp--;
-  printf("%ld\n", sp->i);
+  printf("%ld ", sp->i);
   return sp;
 }
 
@@ -508,36 +508,6 @@ struct dict equal_entry =
   .ldname = "equal",
 };
 
-cell* zero(cell *sp)
-{
-  sp->i = 0;
-  sp++;
-  return sp;
-}
-
-struct dict zero_entry =
-{
-  .name = "0",
-  .code = zero,
-  .next = &equal_entry,
-  .ldname = "zero"
-};
-
-cell* one(cell *sp)
-{
-  sp->i = 1;
-  sp++;
-  return sp;
-}
-
-struct dict one_entry =
-{
-  .name = "1",
-  .code = one,
-  .next = &zero_entry,
-  .ldname = "one"
-};
-
 cell* negate(cell *sp)
 {
   sp[-1].i = -sp[-1].i;
@@ -548,7 +518,7 @@ struct dict negate_entry =
 {
   .name = "negate",
   .code = negate,
-  .next = &one_entry,
+  .next = &equal_entry,
 };
 
 cell* load(cell *sp)
