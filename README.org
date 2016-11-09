@@ -48,8 +48,8 @@ intermediate representation for them can be made available by invoking
 - [ ] Use libfirm's binary emitter instead of dlopen()
 
 ** Benchmark
-The table below lists times required for compiling and executing the
-word =fibonacci= and =queens= in =examples.fifo= on my machine for
+The table below lists times[s] required for compiling and executing
+the word =fibonacci= and =queens= in =examples.fifo= on my machine for
 various forth systems.
 
 | benchmark    | firmforth 95ab9b7        | gforth-fast 0.7.2 |
