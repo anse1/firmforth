@@ -1002,7 +1002,19 @@ struct dict mod_entry = {
      .next = &rot_entry
 };
 
-struct dict *dictionary = &mod_entry;
+cell *depth(cell *sp)
+{
+     sp->u = (sp - data_stack);
+     return ++sp;
+};
+
+struct dict depth_entry = {
+     .name = "depth",
+     .code = depth,
+     .next = &mod_entry
+};
+
+struct dict *dictionary = &depth_entry;
 
 static ir_entity *find_global_entity(const char *name)
 {
