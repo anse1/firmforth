@@ -1053,6 +1053,7 @@ cell* interpret(cell *sp)
   struct dict *entry = dictionary;
   const char *token;
  retry:
+  fflush(stdout);
   token = next();
 
   /* Skip comments */
