@@ -49,7 +49,3 @@ variable nodes
   -1 -1 rot bits try
   solutions @ . nodes @ .  ;
  
-8 queens  \ 92 solutions, 1965 nodes
-
-: gcd ( a b -- n )
-  begin dup while tuck mod repeat drop ;
