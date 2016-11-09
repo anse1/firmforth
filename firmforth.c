@@ -256,7 +256,6 @@ void after_inline_opt(ir_graph *irg)
 void codegen(struct dict *entry) {
   ir_entity *method = entry->entity;
   ir_graph *irg = get_entity_irg(method);
-
   /* Record the pristine IRG for future inlining. */
   ir_graph *pristine = create_irg_copy(irg);
 
@@ -341,7 +340,7 @@ cell* semicolon(cell *sp)
   optimize_cf(irg);
   dump_ir_graph(irg, "pre-inline");
 
-  inline_functions(750 /* maxsize */,
+  inline_functions(250 /* maxsize */,
 		   0 /* threshold */,
 		   after_inline_opt);
 
@@ -785,11 +784,13 @@ struct dict until_entry =
   .next = &repeat_entry
 };
 
-void compile(struct dict *entry)
+cell *compile_comma(cell *sp)
 {
+  struct dict *entry = sp[-1].a;
+  assert(entry);
   ir_node *mem = get_store();
-  ir_node *ptr;
 
+  ir_node *ptr;
   if (entry->entity) {
     ptr = new_Address(entry->entity);
   } else {
@@ -804,30 +805,54 @@ void compile(struct dict *entry)
   ir_sp = new_Proj(call, mode_T, pn_Call_T_result);
   ir_sp = new_Proj(ir_sp, mode_P, 0);
   set_value(0, ir_sp);
+  return --sp;
 }
 
-cell *postpone(cell *sp)
+struct dict compile_comma_entry = {
+     .name = "compile,",
+     .code = compile_comma,
+     .immediate = 1,
+     .next = &until_entry,
+     .ldname = "compile_comma"
+};
+
+cell *w_word(cell *sp)
 {
-     const char *token = next();
-     /* Search dictionary */
+     sp->a = strdup(next()); /* TODO: fix memory leak */
+     return ++sp;
+}
+
+struct dict word_entry = {
+     .name = "word",
+     .ldname = "w_word",
+     .code = w_word,
+     .next = &compile_comma_entry
+};
+
+cell *find(cell *sp)
+{
      struct dict *entry = dictionary;
+     const char *token = sp[-1].a;
      while (entry && strcasecmp(entry->name, token)) {
 	  entry = entry->next;
      }
      if (!entry) {
-	  fprintf(stderr, "ERROR: unknown word: %s\n", token);
+	  sp->i = 0;
      } else {
-	  compile(entry);
+	  sp[-1].a = entry; /* TODO: fix memory leak */
+	  if (entry->immediate)
+	       sp->i = 1;
+	  else
+	       sp->i = -1;
      }
-     return sp;
+     return ++sp;
 }
 
-struct dict postpone_entry =
+struct dict find_entry =
 {
-     .name = "postpone",
-     .immediate = 1,
-     .code = postpone,
-     .next = &until_entry
+     .name = "find",
+     .code = find,
+     .next = &word_entry
 };
 
 cell *immediate(cell *sp)
@@ -840,7 +865,7 @@ struct dict immediate_entry =
 {
      .name = "immediate",
      .code = immediate,
-     .next = &postpone_entry
+     .next = &find_entry
 };
 
 cell *tor(cell *sp)
@@ -965,7 +990,19 @@ struct dict rot_entry = {
      .next = &allocate_entry
 };
 
-struct dict *dictionary = &rot_entry;
+cell *mod(cell *sp)
+{
+     sp[-2].i = sp[-2].i % sp[-1].i;
+     return --sp;
+};
+
+struct dict mod_entry = {
+     .name = "mod",
+     .code = rot,
+     .next = &rot_entry
+};
+
+struct dict *dictionary = &mod_entry;
 
 static ir_entity *find_global_entity(const char *name)
 {
@@ -1052,9 +1089,11 @@ cell* interpret(cell *sp)
   if (entry) {
     /* Word found in dictionary, execute or compile a call to it */
     ASSERT_STACK();
-    if (compiling && !entry->immediate)
-      compile(entry);
-    else {
+    if (compiling && !entry->immediate) {
+	 sp->a = entry;
+	 ++sp;
+         sp = compile_comma(sp);
+    } else {
       if (!compiling && entry->immediate) {
 	fprintf(stderr, "ERROR: immediate words are only allowed in compilation mode\n");
 	return sp;
