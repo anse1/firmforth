@@ -49,15 +49,13 @@ intermediate representation for them can be made available by invoking
 
 ** Benchmark
 The table below lists times required for compiling and executing the
-word =fibonacci= as defined in =core.fifo= for the number 35 on my
-machine for various forth systems.
+word =fibonacci= and =queens= in =examples.fifo= on my machine for
+various forth systems.
 
-|                                | compile [s] | execute [s] |
-|--------------------------------+-------------+-------------|
-| firmforth 0e1784f              |        0.35 |        0.15 |
-| GNU Gforth 0.7.2 (gforth-fast) |        0.00 |        0.39 |
-| stubforth 5745163              |        0.00 |        0.83 |
-| non-optimizing firmforth       |        0.35 |        2.67 |
+| benchmark    | firmforth 95ab9b7        | gforth-fast 0.7.2 |
+|--------------+--------------------------+-------------------|
+| 40 fibonacci | 0.82 (+0.05 compilation) |               3.2 |
+| 16 queens    | 25.1 (+0.28 compilation) |              43.9 |
 
 ** Authors
 
