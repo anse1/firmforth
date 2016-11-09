@@ -37,7 +37,8 @@
 
 : postpone
   word find drop \ TODO: ignores error code
-  [ word compile, find drop ] compile,
+  [ word compile, find drop ] \ cannot use postpone while defining it
+  compile,
 ; immediate
 
 : while postpone if ; immediate
@@ -65,3 +66,20 @@
 
 : tuck
   swap 1 pick ;
+
+: cr
+  10 emit ;
+
+\ words from the TOOLS word set of the standard
+
+: ?
+  @ . ;
+
+: .s
+  depth
+  begin
+    ?dup while
+    dup pick . 1-
+  repeat
+  cr
+;
