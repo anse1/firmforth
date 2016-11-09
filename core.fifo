@@ -61,11 +61,11 @@
   postpone ;
 ;
 
-: +!
-  dup @ 2 pick + swap ! ;
-
 : tuck
   swap 1 pick ;
+
+: +!
+  tuck @ + swap ! ;
 
 : cr
   10 emit ;
