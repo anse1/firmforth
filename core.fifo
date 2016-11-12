@@ -53,14 +53,14 @@
 
 : constant
   postpone :
-  postpone tarval
+  postpone literal
   postpone ;
 ;
 
 : variable
   postpone :
   1 cells allocate drop
-  postpone tarval
+  postpone literal
   postpone ;
 ;
 

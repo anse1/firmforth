@@ -881,7 +881,7 @@ struct dict rload_entry =
 };
 
 /* Compile code to put a Const on the stack */
-cell *w_tarval(cell *sp)
+cell *literal(cell *sp)
 {
      ir_node *ir_sp = get_value(0, mode_P);
      ir_node *constnode = new_Const_long(mode_Lu, sp[-1].u);
@@ -894,10 +894,9 @@ cell *w_tarval(cell *sp)
      return sp;
 }
 
-struct dict w_tarval_entry = {
-     .name = "tarval",
-     .code = w_tarval,
-     .ldname = "w_tarval",
+struct dict literal_entry = {
+     .name = "literal",
+     .code = literal,
      .immediate = 1,
      .next = &rload_entry
 };
@@ -913,7 +912,7 @@ struct dict w_brkleft_entry = {
      .ldname = "w_brkleft",
      .code = w_brkleft,
      .immediate = 1,
-     .next = &w_tarval_entry,
+     .next = &literal_entry,
 };
 
 cell *w_brkright(cell *sp)
@@ -1091,7 +1090,7 @@ cell* interpret(cell *sp)
      sp->i = atoll(token);
      sp++;
      if (compiling)
-       sp = w_tarval(sp);
+       sp = literal(sp);
   } else {
      fprintf(stderr, "ERROR: unknown word: %s\n", token);
   }
