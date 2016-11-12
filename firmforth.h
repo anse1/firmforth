@@ -19,6 +19,7 @@ typedef union cell cell;
 
 /* Type of functions implementing forth words */
 typedef cell* (*word)(cell *sp);
+#define WORD(name) cell* (name)(cell *sp)
 
 struct dict {
   const char *name; /* Forth word */

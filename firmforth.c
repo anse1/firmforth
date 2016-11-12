@@ -68,7 +68,7 @@ ir_graph *create_irg_copy(ir_graph *irg);
 void set_entity_irg(ir_entity *ent, ir_graph *irg);
 
 /* The first forth word method */
-cell* hi(cell *sp)
+WORD(hi)
 {
   puts("firmforth " GITREV);
   return sp;
@@ -80,7 +80,7 @@ struct dict hi_entry = {
    .code = hi,
 };
 
-cell* bye(cell *sp)
+WORD(bye)
 {
   (void) sp;
   exit(0);
@@ -94,7 +94,7 @@ struct dict bye_entry = {
 
 /* Definitions of standard forth words have no comments on them.  See
    ANSI X3.215-1994 for their definition. */
-cell* dot(cell *sp)
+WORD(dot)
 {
   sp--;
   printf("%ld ", sp->i);
@@ -108,7 +108,7 @@ struct dict dot_entry = {
   .ldname = "dot"
 };
 
-cell* add(cell *sp)
+WORD(add)
 {
   sp--;
   sp[-1].i = sp[-1].i + sp[0].i;
@@ -123,7 +123,7 @@ struct dict add_entry = {
 };
 
 /* Floored division */
-cell* divide(cell *sp)
+WORD(divide)
 {
   sp--;
   sp[-1].i = (((sp[-1].i < 0) != (sp[0].i < 0))?
@@ -139,7 +139,7 @@ struct dict divide_entry = {
   .ldname = "divide"
 };
 
-cell* greater_than(cell *sp)
+WORD(greater_than)
 {
   sp -= 1;
   sp[-1].i = sp[-1].i > sp[0].i ? 1 : 0;
@@ -183,7 +183,7 @@ const char *next() {
 }
 
 /* Start compilation of a new word */
-cell* colon(cell *sp)
+WORD(colon)
 {
   compiling = 1; /* switch interpreter mode */
 
@@ -318,7 +318,7 @@ void codegen(struct dict *entry) {
 }
 
 /* End compilation of a word */
-cell* semicolon(cell *sp)
+WORD(semicolon)
 {
   ASSERT_STACK();
 
@@ -384,7 +384,7 @@ struct dict semicolon_entry =
   .ldname = "semicolon"
 };
 
-cell* key(cell *sp)
+WORD(key)
 {
   sp->i = getchar();
   sp++;
@@ -398,7 +398,7 @@ struct dict key_entry =
   .next = &semicolon_entry,
 };
 
-cell* emit(cell *sp)
+WORD(emit)
 {
   sp--;
   putchar(sp->i);
@@ -412,7 +412,7 @@ struct dict emit_entry =
   .next = &key_entry,
 };
 
-cell* sp_load(cell *sp)
+WORD(sp_load)
 {
   sp->a = sp;
   sp++;
@@ -427,7 +427,7 @@ struct dict sp_load_entry =
   .ldname = "sp_load"
 };
 
-cell* sp_store(cell *sp)
+WORD(sp_store)
 {
   sp = sp[-1].a;
   return --sp;
@@ -441,7 +441,7 @@ struct dict sp_store_entry =
   .ldname = "sp_store"
 };
 
-cell* pick(cell *sp)
+WORD(pick)
 {
   sp[-1] = sp[-sp[-1].i - 2];
   return sp;
@@ -454,7 +454,7 @@ struct dict sp_pick_entry =
   .next = &sp_store_entry,
 };
 
-cell* cells(cell *sp)
+WORD(cells)
 {
   sp[-1].i = sizeof(union cell) * sp[-1].i;
   return sp;
@@ -467,7 +467,7 @@ struct dict cells_entry =
   .next = &sp_pick_entry,
 };
 
-cell *swap(cell *sp)
+WORD(swap)
 {
   cell tmp = sp[-1];
   sp[-1] = sp[-2];
@@ -482,7 +482,7 @@ struct dict swap_entry =
   .next = &cells_entry,
 };
 
-cell *drop(cell *sp)
+WORD(drop)
 {
   return --sp;
 }
@@ -494,7 +494,7 @@ struct dict drop_entry =
   .next = &swap_entry,
 };
 
-cell *equal(cell *sp)
+WORD(equal)
 {
   sp[-2].i = sp[-2].i == sp[-1].i;
   return --sp;
@@ -508,7 +508,7 @@ struct dict equal_entry =
   .ldname = "equal",
 };
 
-cell* negate(cell *sp)
+WORD(negate)
 {
   sp[-1].i = -sp[-1].i;
   return sp;
@@ -521,7 +521,7 @@ struct dict negate_entry =
   .next = &equal_entry,
 };
 
-cell* load(cell *sp)
+WORD(load)
 {
   sp[-1].a = *(sp[-1].aa);
   return sp;
@@ -536,7 +536,7 @@ struct dict load_entry =
 };
 
 /* ( x a-addr -- ) */
-cell* store(cell *sp)
+WORD(store)
 {
   *(sp[-1].aa) = sp[-2].a;
   sp -= 2;
@@ -556,7 +556,7 @@ struct dict store_entry =
    matured.  The basic block projected from the true condition is made
    the current one.  The basic block for the false condition is pushed
    on the stack. */
-cell* w_if(cell *sp) /* C: -- bb_false */
+WORD(w_if) /* C: -- bb_false */
 {
   /* IR to load value at top of stack sp[-1] */
   ir_node *offset = new_Const_long(mode_Ls, -sizeof(union cell));
@@ -605,7 +605,7 @@ struct dict if_entry =
 /* Mature the basic block under construction and switch construction
    to the basic block on the stack.  Push the basic block following
    the true/false blocks onto the stack. */
-cell* w_else(cell *sp) /* bb_false -- bb_then */
+WORD(w_else) /* bb_false -- bb_then */
 {
   ir_node *bb_false = *--cs;
 
@@ -631,7 +631,7 @@ struct dict else_entry =
 /* Finalize current basic block as well as the condition block and
    make the one on the stack the current one. */
 /* ( bb_then -- ) */
-cell* w_then(cell *sp)
+WORD(w_then)
 {
   ir_node *bb_then = *--cs;
   ir_node *jump = new_Jmp();
@@ -653,7 +653,7 @@ struct dict then_entry =
 
 /* BEGIN loop construction */
 /* -- bb_head */
-cell *begin(cell *sp)
+WORD(begin)
 {
   ir_node *jump = new_Jmp();
   mature_immBlock(get_cur_block());
@@ -680,7 +680,7 @@ struct dict begin_entry =
 
 /* Finalize unconditional loop construction */
 /* ( bb_head -- ) */
-cell *again(cell *sp)
+WORD(again)
 {
   ir_node *bb_head = *--cs;
   ir_node *jump = new_Jmp();
@@ -707,7 +707,7 @@ struct dict again_entry =
 
 /* Finalize conditional loop construction */
 /* ( bb_head bb_then -- ) */
-cell *repeat(cell *sp)
+WORD(repeat)
 {
   ir_node *bb_then = *--cs;
   ir_node *jump = new_Jmp();
@@ -731,7 +731,7 @@ struct dict repeat_entry =
 
 /* Finalize conditional loop construction */
 /* ( bb_head -- ) */
-cell *until(cell *sp)
+WORD(until)
 {
   sp = w_if(sp);
   /* (bb_head bb_false) */
@@ -754,7 +754,7 @@ struct dict until_entry =
   .next = &repeat_entry
 };
 
-cell *compile_comma(cell *sp)
+WORD(compile_comma)
 {
   struct dict *entry = sp[-1].a;
   assert(entry);
@@ -786,7 +786,7 @@ struct dict compile_comma_entry = {
      .ldname = "compile_comma"
 };
 
-cell *w_word(cell *sp)
+WORD(w_word)
 {
      sp->a = strdup(next()); /* TODO: fix memory leak */
      return ++sp;
@@ -799,7 +799,7 @@ struct dict word_entry = {
      .next = &compile_comma_entry
 };
 
-cell *find(cell *sp)
+WORD(find)
 {
      struct dict *entry = dictionary;
      const char *token = sp[-1].a;
@@ -825,7 +825,7 @@ struct dict find_entry =
      .next = &word_entry
 };
 
-cell *immediate(cell *sp)
+WORD(immediate)
 {
      dictionary->immediate = 1;
      return sp;
@@ -838,7 +838,7 @@ struct dict immediate_entry =
      .next = &find_entry
 };
 
-cell *tor(cell *sp)
+WORD(tor)
 {
      *rp++ = *--sp;
      return sp;
@@ -852,7 +852,7 @@ struct dict tor_entry =
      .next = &immediate_entry
 };
 
-cell *rfrom(cell *sp)
+WORD(rfrom)
 {
      *sp++ = *--rp;
      return sp;
@@ -866,7 +866,7 @@ struct dict rfrom_entry =
      .next = &tor_entry
 };
 
-cell *rload(cell *sp)
+WORD(rload)
 {
      *sp++ = rp[-1];
      return sp;
@@ -881,7 +881,7 @@ struct dict rload_entry =
 };
 
 /* Compile code to put a Const on the stack */
-cell *literal(cell *sp)
+WORD(literal)
 {
      ir_node *ir_sp = get_value(0, mode_P);
      ir_node *constnode = new_Const_long(mode_Lu, sp[-1].u);
@@ -901,7 +901,7 @@ struct dict literal_entry = {
      .next = &rload_entry
 };
 
-cell *w_brkleft(cell *sp)
+WORD(w_brkleft)
 {
      compiling = 0;
      return sp;
@@ -915,7 +915,7 @@ struct dict w_brkleft_entry = {
      .next = &literal_entry,
 };
 
-cell *w_brkright(cell *sp)
+WORD(w_brkright)
 {
      compiling = 1;
      return sp;
@@ -929,7 +929,7 @@ struct dict w_brkright_entry = {
 };
 
 /* ( u -- a-addr ior ) */
-cell *allocate(cell *sp)
+WORD(allocate)
 {
      size_t sz = sp[-1].u;
      sp[-1].a = malloc(sz);
@@ -944,7 +944,7 @@ struct dict allocate_entry = {
      .next = &w_brkright_entry
 };
 
-cell *rot(cell *sp)
+WORD(rot)
 {
      cell tmp = sp[-1];
      sp[-1] = sp[-3];
@@ -959,7 +959,7 @@ struct dict rot_entry = {
      .next = &allocate_entry
 };
 
-cell *mod(cell *sp)
+WORD(mod)
 {
      sp[-2].i = sp[-2].i % sp[-1].i;
      return --sp;
@@ -971,7 +971,7 @@ struct dict mod_entry = {
      .next = &rot_entry
 };
 
-cell *depth(cell *sp)
+WORD(depth)
 {
      sp->u = (sp - data_stack);
      return ++sp;
@@ -1047,7 +1047,7 @@ static void initialize_firm()
 /* Read tokens and look them up in the dictionary.  When not
    compiling, execute the words, Otherwise, add IR for their execution
    to the word under construction. */
-cell* interpret(cell *sp)
+WORD(interpret)
 {
   struct dict *entry = dictionary;
   const char *token;
