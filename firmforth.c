@@ -936,7 +936,7 @@ WORD(allocate)
      assert(sp[-1].a);
      sp[0].a = 0;
      return ++sp;
-};
+}
 
 struct dict allocate_entry = {
      .name = "allocate",
@@ -963,7 +963,7 @@ WORD(mod)
 {
      sp[-2].i = sp[-2].i % sp[-1].i;
      return --sp;
-};
+}
 
 struct dict mod_entry = {
      .name = "mod",
@@ -975,7 +975,7 @@ WORD(depth)
 {
      sp->u = (sp - data_stack);
      return ++sp;
-};
+}
 
 struct dict depth_entry = {
      .name = "depth",
