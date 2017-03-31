@@ -1003,10 +1003,9 @@ static void initialize_firm()
   ir_init();
 
   /* initialize backend early */
-  int res = be_parse_arg("isa=amd64");
-  res |= be_parse_arg("pic=elf");
-  be_get_backend_param(); /* calls initialize_isa() */
-  assert(res != 0);
+  ir_target_set("amd64");
+  assert(1 == ir_target_option("pic=1"));
+  ir_target_init();
 
   /* create types */
   word_method_type = new_type_method(1, 1, false, 0, 0);
