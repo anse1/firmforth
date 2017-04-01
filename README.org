@@ -57,6 +57,8 @@ various forth systems.
 | 40 fibonacci | 0.82 (+0.05 compilation) |               3.2 |
 | 16 queens    | 25.1 (+0.28 compilation) |              43.9 |
 
+** References
+- https://korte.credativ.com/~ase/firm-postgres-jit-forth.pdf
 ** Authors
 
 Andreas Seltenreich <seltenreich@gmx.de>
